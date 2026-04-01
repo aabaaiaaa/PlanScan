@@ -1,0 +1,17 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.app h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.app p {
+  color: #666;
+}

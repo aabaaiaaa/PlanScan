@@ -5,7 +5,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 ---
 
 ### TASK-001: Project scaffolding
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: none
 - **Description**: Initialise a Vite + React + TypeScript project. Install core dependencies: Three.js, OpenCV.js (or opencv-js wrapper). Set up Vitest with React Testing Library. Configure the project structure with folders for components, hooks, utils, and types. Add a basic App shell that renders a placeholder page.
 - **Verification**: `npm run dev` starts the dev server with no errors and displays the placeholder page. `npm run test` runs Vitest with zero tests (or a smoke test) and exits cleanly.

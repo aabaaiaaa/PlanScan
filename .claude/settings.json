@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:C:\\Users\\jeastaugh\\source\\repos\\Experiments\\0.next.project)",
+      "Bash(cd:C:\\Users\\jeastaugh\\source\\repos\\Experiments\\0.next.project/**)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(git:*)",
+      "Bash(tsc:*)",
+      "Bash(mkdir:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf ..)",
+      "Bash(sudo:*)",
+      "Bash(chmod:*)",
+      "Bash(chown:*)",
+      "Edit(C:/Users/jeastaugh/source/repos/Experiments/0.next.project/.devloop/**)",
+      "Write(C:/Users/jeastaugh/source/repos/Experiments/0.next.project/.devloop/**)",
+      "Edit(C:/Users/jeastaugh/source/repos/Experiments/0.next.project/.claude/**)",
+      "Write(C:/Users/jeastaugh/source/repos/Experiments/0.next.project/.claude/**)"
+    ]
+  },
+  "restrictToWorkspace": true,
+  "workspacePath": "C:\\Users\\jeastaugh\\source\\repos\\Experiments\\0.next.project"
+}
