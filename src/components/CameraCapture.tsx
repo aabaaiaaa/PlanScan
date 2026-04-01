@@ -1,7 +1,7 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useCamera } from '../hooks/useCamera'
 import { useScanSession } from '../hooks/useScanSession'
-import type { CapturedPhoto } from '../types'
+import type { CapturedPhoto, PhotoTag } from '../types'
 
 export function CameraCapture() {
   const { videoRef, status, errorMessage, captureFrame, startCamera, stopCamera } = useCamera()
@@ -30,7 +30,24 @@ export function CameraCapture() {
     dispatch({ type: 'ADD_PHOTO', photo })
   }, [captureFrame, session, dispatch])
 
+  const handleTag = useCallback((tag: PhotoTag) => {
+    if (!session || session.photos.length === 0) return
+    const lastPhoto = session.photos[session.photos.length - 1]
+    dispatch({ type: 'TAG_PHOTO', photoIndex: lastPhoto.index, tag })
+  }, [session, dispatch])
+
   const photoCount = session?.photos.length ?? 0
+
+  const tagCounts = useMemo(() => {
+    if (!session) return { doorway: 0, window: 0 }
+    let doorway = 0
+    let window = 0
+    for (const photo of session.photos) {
+      if (photo.tags.includes('doorway')) doorway++
+      if (photo.tags.includes('window')) window++
+    }
+    return { doorway, window }
+  }, [session])
 
   if (status === 'denied') {
     return (
@@ -75,6 +92,30 @@ export function CameraCapture() {
         >
           Capture
         </button>
+      </div>
+
+      <div className="camera-capture__tagging">
+        <button
+          className="camera-capture__tag-btn camera-capture__tag-btn--doorway"
+          onClick={() => handleTag('doorway')}
+          disabled={photoCount === 0}
+          aria-label="Tag as doorway"
+        >
+          Doorway
+        </button>
+        <button
+          className="camera-capture__tag-btn camera-capture__tag-btn--window"
+          onClick={() => handleTag('window')}
+          disabled={photoCount === 0}
+          aria-label="Tag as window"
+        >
+          Window
+        </button>
+      </div>
+
+      <div className="camera-capture__tag-counts" data-testid="tag-counts">
+        {tagCounts.doorway} {tagCounts.doorway === 1 ? 'doorway' : 'doorways'},{' '}
+        {tagCounts.window} {tagCounts.window === 1 ? 'window' : 'windows'} tagged
       </div>
     </div>
   )

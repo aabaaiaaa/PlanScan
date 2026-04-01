@@ -23,7 +23,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Component renders on a device with a camera and displays the live feed. Tapping the shutter button increments the photo count and stores the photo in session state. Denying camera permissions shows an error message. Component tests verify the UI renders and the shutter button calls the capture handler.
 
 ### TASK-004: Photo tagging (doorway and window buttons)
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-003
 - **Description**: Add "Doorway" and "Window" buttons to the capture UI. When tapped, the current photo is tagged with the corresponding type (stored in photo metadata). Show a visual indicator of tagged photo counts (e.g., "3 doorways, 2 windows tagged"). See requirements F2.
 - **Verification**: Tagging a photo updates its metadata. The tag counts display correctly. Component tests verify button clicks update tags and counts render.

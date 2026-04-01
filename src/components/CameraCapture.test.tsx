@@ -244,4 +244,156 @@ describe('CameraCapture', () => {
     const btn = screen.getByRole('button', { name: /capture photo/i })
     expect(btn).toBeDisabled()
   })
+
+  it('renders Doorway and Window tag buttons', async () => {
+    setupMediaDevicesSuccess(createMockStream())
+
+    await act(async () => {
+      renderCamera()
+    })
+
+    expect(screen.getByRole('button', { name: /tag as doorway/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /tag as window/i })).toBeInTheDocument()
+  })
+
+  it('disables tag buttons when no photos have been taken', async () => {
+    setupMediaDevicesSuccess(createMockStream())
+
+    await act(async () => {
+      renderCamera()
+    })
+
+    expect(screen.getByRole('button', { name: /tag as doorway/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /tag as window/i })).toBeDisabled()
+  })
+
+  it('enables tag buttons after a photo is captured', async () => {
+    setupMediaDevicesSuccess(createMockStream())
+
+    await act(async () => {
+      renderCamera()
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /capture photo/i }))
+    })
+
+    expect(screen.getByRole('button', { name: /tag as doorway/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /tag as window/i })).toBeEnabled()
+  })
+
+  it('tags the last captured photo as doorway when Doorway button is clicked', async () => {
+    setupMediaDevicesSuccess(createMockStream())
+
+    let capturedSession: ReturnType<typeof useScanSession> | null = null
+
+    await act(async () => {
+      renderCamera((s) => { capturedSession = s })
+    })
+
+    // Capture a photo first
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /capture photo/i }))
+    })
+
+    // Tag as doorway
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /tag as doorway/i }))
+    })
+
+    expect(capturedSession).not.toBeNull()
+    const photo = capturedSession!.session!.photos[0]
+    expect(photo.tags).toContain('doorway')
+  })
+
+  it('tags the last captured photo as window when Window button is clicked', async () => {
+    setupMediaDevicesSuccess(createMockStream())
+
+    let capturedSession: ReturnType<typeof useScanSession> | null = null
+
+    await act(async () => {
+      renderCamera((s) => { capturedSession = s })
+    })
+
+    // Capture a photo first
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /capture photo/i }))
+    })
+
+    // Tag as window
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /tag as window/i }))
+    })
+
+    expect(capturedSession).not.toBeNull()
+    const photo = capturedSession!.session!.photos[0]
+    expect(photo.tags).toContain('window')
+  })
+
+  it('displays tag counts showing 0 doorways and 0 windows initially', async () => {
+    setupMediaDevicesSuccess(createMockStream())
+
+    await act(async () => {
+      renderCamera()
+    })
+
+    const counts = screen.getByTestId('tag-counts')
+    expect(counts).toHaveTextContent('0 doorways, 0 windows tagged')
+  })
+
+  it('updates tag counts when photos are tagged', async () => {
+    setupMediaDevicesSuccess(createMockStream())
+
+    await act(async () => {
+      renderCamera()
+    })
+
+    const captureBtn = screen.getByRole('button', { name: /capture photo/i })
+    const doorwayBtn = screen.getByRole('button', { name: /tag as doorway/i })
+    const windowBtn = screen.getByRole('button', { name: /tag as window/i })
+
+    // Capture and tag as doorway
+    await act(async () => { fireEvent.click(captureBtn) })
+    await act(async () => { fireEvent.click(doorwayBtn) })
+
+    expect(screen.getByTestId('tag-counts')).toHaveTextContent('1 doorway, 0 windows tagged')
+
+    // Capture another and tag as window
+    await act(async () => { fireEvent.click(captureBtn) })
+    await act(async () => { fireEvent.click(windowBtn) })
+
+    expect(screen.getByTestId('tag-counts')).toHaveTextContent('1 doorway, 1 window tagged')
+
+    // Capture another and tag as doorway
+    await act(async () => { fireEvent.click(captureBtn) })
+    await act(async () => { fireEvent.click(doorwayBtn) })
+
+    expect(screen.getByTestId('tag-counts')).toHaveTextContent('2 doorways, 1 window tagged')
+  })
+
+  it('tags the most recent photo, not earlier ones', async () => {
+    setupMediaDevicesSuccess(createMockStream())
+
+    let capturedSession: ReturnType<typeof useScanSession> | null = null
+
+    await act(async () => {
+      renderCamera((s) => { capturedSession = s })
+    })
+
+    const captureBtn = screen.getByRole('button', { name: /capture photo/i })
+
+    // Capture two photos
+    await act(async () => { fireEvent.click(captureBtn) })
+    await act(async () => { fireEvent.click(captureBtn) })
+
+    // Tag doorway — should tag photo at index 1 (the latest)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /tag as doorway/i }))
+    })
+
+    expect(capturedSession).not.toBeNull()
+    const photos = capturedSession!.session!.photos
+    expect(photos[0].tags).toEqual([])
+    expect(photos[1].tags).toContain('doorway')
+  })
 })
