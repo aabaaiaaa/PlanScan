@@ -29,7 +29,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Tagging a photo updates its metadata. The tag counts display correctly. Component tests verify button clicks update tags and counts render.
 
 ### TASK-005: Scale calibration UI
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-003
 - **Description**: Build a ScaleCalibration component shown after capture ends. The user selects a photo from the session, draws a line (two click/tap points) over the image, and enters the real-world length with a unit selector (cm, m, inches, feet). Store the scale reference (two pixel coordinates + real-world measurement + unit) in the scan session. See requirements F3.
 - **Verification**: User can select a photo, draw a line on it, and input a measurement. The scale reference is stored in the session state. Unit test verifies the pixel-to-real-world ratio calculation.
