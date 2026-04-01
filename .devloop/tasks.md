@@ -11,7 +11,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: `npm run dev` starts the dev server with no errors and displays the placeholder page. `npm run test` runs Vitest with zero tests (or a smoke test) and exits cleanly.
 
 ### TASK-002: Core data types and state management
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-001
 - **Description**: Define TypeScript types/interfaces for the core data model: CapturedPhoto (image data, index, tags, metadata), ScanSession (collection of photos, scale reference), Room, Wall, Floor, Ceiling, Door, Window, Staircase, and the overall BuildingModel. Set up React context or a simple state store to hold the current scan session and reconstructed model. See requirements F1–F9 for what data each feature needs.
 - **Verification**: Types compile with no errors. A unit test creates instances of each type and validates their structure.
