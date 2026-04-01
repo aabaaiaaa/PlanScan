@@ -35,7 +35,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: User can select a photo, draw a line on it, and input a measurement. The scale reference is stored in the session state. Unit test verifies the pixel-to-real-world ratio calculation.
 
 ### TASK-006: Feature detection and matching
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-002
 - **Description**: Implement feature detection on captured photos using OpenCV.js (ORB or similar classical detector). For each pair of overlapping photos, compute feature matches. Filter matches using a ratio test or RANSAC to remove outliers. Return a set of matched feature pairs across the photo set. This is the first stage of the SfM pipeline. See requirements F4.
 - **Verification**: Given a set of test photos with overlapping content, the function returns matched feature points across pairs. Unit test with fixture images confirms matches are found and outliers are filtered.
