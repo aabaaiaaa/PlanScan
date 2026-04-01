@@ -17,7 +17,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Types compile with no errors. A unit test creates instances of each type and validates their structure.
 
 ### TASK-003: Camera capture component
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-002
 - **Description**: Build a CameraCapture React component that accesses the device camera via the MediaDevices API. Capture in low resolution. Include a shutter button that saves the current frame as a CapturedPhoto to the scan session state. Display a running count of photos taken. Handle the case where camera permissions are denied with a clear message. See requirements F1.
 - **Verification**: Component renders on a device with a camera and displays the live feed. Tapping the shutter button increments the photo count and stores the photo in session state. Denying camera permissions shows an error message. Component tests verify the UI renders and the shutter button calls the capture handler.
