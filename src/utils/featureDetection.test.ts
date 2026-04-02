@@ -50,6 +50,7 @@ function makeMockMat(overrides?: Partial<CvMat>): CvMat {
     cols: 0,
     data: new Uint8Array(),
     data32F: new Float32Array(),
+    data64F: new Float64Array(),
     delete: vi.fn(),
     isContinuous: () => true,
     type: () => 0,
@@ -159,9 +160,12 @@ function createMockCv(
         return makeMockMat()
       }
     ),
+    findEssentialMat: vi.fn(() => makeMockMat()),
+    recoverPose: vi.fn(() => 0),
     NORM_HAMMING: 4,
     COLOR_RGBA2GRAY: 11,
     FM_RANSAC: 8,
+    RANSAC: 8,
     CV_32FC2: 13,
     CV_64F: 6,
   }

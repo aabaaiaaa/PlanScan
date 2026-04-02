@@ -113,7 +113,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: During reconstruction, a progress bar or spinner is shown with stage labels. The UI remains interactive. If given too few photos, an appropriate error/warning message is displayed. If no scale calibration exists, measurements show an "uncalibrated" warning.
 
 ### TASK-019: App navigation and session flow
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-003, TASK-005, TASK-012, TASK-014
 - **Description**: Wire together the full app flow: start screen -> capture phase -> scale calibration -> reconstruction -> viewer (with toggle between 3D wireframe and 2D floor plan). Add navigation controls to move between phases. Allow the user to go back to capture to add more photos. See requirements user flow.
 - **Verification**: The user can navigate through the full flow: start -> capture -> calibrate -> reconstruct -> view. Toggling between 3D and 2D views works. Going back to capture and adding more photos triggers re-reconstruction. `npm run build` completes with no errors.

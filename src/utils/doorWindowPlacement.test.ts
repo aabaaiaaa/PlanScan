@@ -43,32 +43,6 @@ function makeWallAtZ(
   }
 }
 
-/**
- * Create a simple wall on the YZ plane at a given X position.
- * Wall runs along Z from zMin to zMax, and from yMin to yMax.
- * Normal points in the +X direction.
- */
-function makeWallAtX(
-  id: string,
-  x: number,
-  zMin: number,
-  zMax: number,
-  yMin: number,
-  yMax: number
-): Wall {
-  return {
-    id,
-    corners: [
-      { x, y: yMin, z: zMin }, // bottom-left
-      { x, y: yMin, z: zMax }, // bottom-right
-      { x, y: yMax, z: zMax }, // top-right
-      { x, y: yMin, z: zMin }, // top-left — note: for this wall, top-left is actually at (x, yMax, zMin)
-    ],
-    plane: { normal: { x: 1, y: 0, z: 0 }, distance: -x },
-    measurements: { length: zMax - zMin },
-  }
-}
-
 /** Create a minimal Room with the given walls */
 function makeRoom(
   id: string,

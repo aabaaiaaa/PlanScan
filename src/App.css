@@ -1,17 +1,258 @@
+/* ---------------------------------------------------------------------------
+   App shell
+--------------------------------------------------------------------------- */
+
 .app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #e0e0e0;
+  background: #121218;
+}
+
+/* ---------------------------------------------------------------------------
+   Header
+--------------------------------------------------------------------------- */
+
+.app__header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 24px;
+  background: #1a1a2e;
+  border-bottom: 1px solid #2a2a3e;
+  flex-shrink: 0;
+}
+
+.app__title {
+  font-size: 1.2rem;
+  margin: 0;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* Breadcrumbs */
+
+.app__breadcrumbs {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.app__breadcrumb {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #666;
+  background: transparent;
+}
+
+.app__breadcrumb + .app__breadcrumb::before {
+  content: '›';
+  margin-right: 8px;
+  color: #444;
+}
+
+.app__breadcrumb--active {
+  color: #fff;
+  background: #2a4a8a;
+  font-weight: 600;
+}
+
+.app__breadcrumb--done {
+  color: #88bb88;
+}
+
+/* ---------------------------------------------------------------------------
+   Content area
+--------------------------------------------------------------------------- */
+
+.app__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------------------------------------------------------------------------
+   Start screen
+--------------------------------------------------------------------------- */
+
+.app__start {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app__start-hero {
+  text-align: center;
+  max-width: 480px;
+  padding: 48px 24px;
+}
+
+.app__start-hero h2 {
+  font-size: 2rem;
+  margin: 0 0 16px;
+  color: #fff;
+}
+
+.app__start-hero p {
+  font-size: 1rem;
+  color: #999;
+  line-height: 1.6;
+  margin: 0 0 32px;
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons
+--------------------------------------------------------------------------- */
+
+.app__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.app__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.app__btn--primary {
+  background: #2a6ada;
+  color: #fff;
+}
+
+.app__btn--primary:hover:not(:disabled) {
+  background: #3a7aea;
+}
+
+.app__btn--secondary {
+  background: #2a2a3e;
+  color: #ccc;
+}
+
+.app__btn--secondary:hover:not(:disabled) {
+  background: #3a3a4e;
+}
+
+.app__btn--large {
+  padding: 14px 40px;
+  font-size: 1.1rem;
+  border-radius: 8px;
+}
+
+/* ---------------------------------------------------------------------------
+   Navigation bar (bottom of phases)
+--------------------------------------------------------------------------- */
+
+.app__nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #1a1a2e;
+  border-top: 1px solid #2a2a3e;
+  flex-shrink: 0;
+}
+
+.app__nav-bar-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------------------------------------------------------------------------
+   Capture phase
+--------------------------------------------------------------------------- */
+
+.app__capture {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.app__capture .camera-capture {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+}
+
+/* ---------------------------------------------------------------------------
+   Calibration phase
+--------------------------------------------------------------------------- */
+
+.app__calibrate {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.app__calibrate .scale-calibration {
+  flex: 1;
+  padding: 16px 24px;
+  overflow-y: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Reconstruction phase
+--------------------------------------------------------------------------- */
+
+.app__reconstruct {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  font-family: system-ui, -apple-system, sans-serif;
+  padding: 48px 24px;
 }
 
-.app h1 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
+.app__reconstruct .reconstruction-progress {
+  max-width: 480px;
+  width: 100%;
 }
 
-.app p {
-  color: #666;
+/* ---------------------------------------------------------------------------
+   View phase
+--------------------------------------------------------------------------- */
+
+.app__view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.app__view-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #1a1a2e;
+  border-bottom: 1px solid #2a2a3e;
+  flex-shrink: 0;
+}
+
+.app__view-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.app__view-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.app__viewer {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
 }

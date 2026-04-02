@@ -10,8 +10,8 @@ import {
   computeScaleFactor,
   scalePointCloud,
   generatePointCloud,
-  TriangulatedPoint,
 } from './triangulation'
+import type { TriangulatedPoint } from './triangulation'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -205,9 +205,7 @@ describe('triangulation', () => {
     })
 
     it('returns null when point is behind a camera', () => {
-      // Point behind camera 1 (negative Z)
-      const target: Point3D = { x: 0, y: 0, z: -5 }
-      // Can't project a point behind the camera, so create pixel coords manually
+      // Point behind camera 1 (negative Z) — can't project a point behind the camera, so create pixel coords manually
       // that would result in negative t values
       const px1: Point2D = { x: 320, y: 240 } // center → straight ahead
       const px2: Point2D = { x: 320, y: 240 } // center → straight ahead

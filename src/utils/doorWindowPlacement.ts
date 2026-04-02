@@ -8,7 +8,6 @@ import {
   pointToPlaneDistance,
   computeCentroid,
   horizontalDistance,
-  getTaggedPositions,
 } from './geometryExtraction'
 
 // ---------------------------------------------------------------------------
@@ -193,8 +192,7 @@ export function placeDoorOnWall(
   const { width, height } = estimateDoorDimensions(wall)
 
   // Door center is at clamped X/Z but vertically at floor + height/2
-  const [bl, br, tr, _tl] = wall.corners
-  const upDir = vec3Normalize(vec3Sub(tr, br))
+  const [bl, br] = wall.corners
   const floorY = Math.min(bl.y, br.y)
 
   // Position the door center at the clamped horizontal position,
@@ -229,8 +227,7 @@ export function placeWindowOnWall(
 
   const { width, height, sillHeight } = estimateWindowDimensions(wall)
 
-  const [bl, br, tr, _tl] = wall.corners
-  const upDir = vec3Normalize(vec3Sub(tr, br))
+  const [bl, br] = wall.corners
   const floorY = Math.min(bl.y, br.y)
 
   // Window center is at sillHeight + height/2 above the floor

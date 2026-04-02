@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import type { Point3D, Plane, CapturedPhoto, CameraPose } from '../types'
 import type { PointCloud, TriangulatedPoint } from './triangulation'
+import type { DetectedPlane } from './geometryExtraction'
 import {
   vec3Sub,
   vec3Cross,
@@ -26,8 +27,6 @@ import {
   detectStaircases,
   assignFloorLevel,
   extractRoomGeometry,
-  DetectedPlane,
-  PlaneType,
 } from './geometryExtraction'
 
 // ---------------------------------------------------------------------------
@@ -54,45 +53,6 @@ function makePointCloud(
     isScaled,
     scaleFactor: isScaled ? 1.0 : 1.0,
   }
-}
-
-/** Generate points on a plane with some noise */
-function generatePlanePoints(
-  normal: Point3D,
-  distance: number,
-  count: number,
-  spread: number = 5,
-  noise: number = 0.01
-): Point3D[] {
-  const points: Point3D[] = []
-  const n = vec3Normalize(normal)
-
-  // Find two tangent vectors on the plane
-  let tangent1: Point3D
-  if (Math.abs(n.y) < 0.9) {
-    tangent1 = vec3Normalize(vec3Cross(n, { x: 0, y: 1, z: 0 }))
-  } else {
-    tangent1 = vec3Normalize(vec3Cross(n, { x: 1, y: 0, z: 0 }))
-  }
-  const tangent2 = vec3Normalize(vec3Cross(n, tangent1))
-
-  // A point on the plane: p = -distance * normal
-  const origin = vec3Scale(n, -distance)
-
-  for (let i = 0; i < count; i++) {
-    const u = (Math.random() - 0.5) * spread
-    const v = (Math.random() - 0.5) * spread
-    const nx = (Math.random() - 0.5) * noise
-    const ny = (Math.random() - 0.5) * noise
-    const nz = (Math.random() - 0.5) * noise
-    points.push({
-      x: origin.x + u * tangent1.x + v * tangent2.x + nx,
-      y: origin.y + u * tangent1.y + v * tangent2.y + ny,
-      z: origin.z + u * tangent1.z + v * tangent2.z + nz,
-    })
-  }
-
-  return points
 }
 
 /** Generate points on a wall (vertical XZ plane at a given Z position) */

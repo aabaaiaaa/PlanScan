@@ -1,7 +1,6 @@
 import type {
   Point3D,
   Plane,
-  CameraPose,
   Wall,
   Floor,
   Ceiling,
@@ -10,7 +9,7 @@ import type {
   BuildingModel,
   CapturedPhoto,
 } from '../types'
-import type { PointCloud, TriangulatedPoint } from './triangulation'
+import type { PointCloud } from './triangulation'
 import { placeDoorsAndWindows } from './doorWindowPlacement'
 
 // ---------------------------------------------------------------------------
@@ -787,7 +786,7 @@ export function extractRoomGeometry(
   const roomEntries = [...wallRoomAssignment.entries()]
 
   for (let i = 0; i < roomEntries.length; i++) {
-    const [roomIdx, roomWallPlanes] = roomEntries[i]
+    const [, roomWallPlanes] = roomEntries[i]
     const roomId = `room-${i}`
     const roomName = `Room ${i + 1}`
 
