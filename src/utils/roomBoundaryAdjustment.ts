@@ -432,7 +432,7 @@ function createSplitWall(
   return {
     id: wallId,
     corners: [bottomLeft, bottomRight, topRight, topLeft],
-    plane: { normal, distance: vec3Dot(normal, bottomLeft) },
+    plane: { normal, distance: -vec3Dot(normal, bottomLeft) },
     measurements: { length: vec3Length(dir) },
   }
 }

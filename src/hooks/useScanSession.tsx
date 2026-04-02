@@ -21,6 +21,7 @@ type ScanSessionAction =
   | { type: 'UNTAG_PHOTO'; photoIndex: number; tag: PhotoTag }
   | { type: 'SET_SCALE_REFERENCE'; scaleReference: ScaleReference }
   | { type: 'CLEAR_SCALE_REFERENCE' }
+  | { type: 'REOPEN_SESSION' }
   | { type: 'RESET' }
 
 // --- Reducer ---
@@ -73,6 +74,13 @@ function scanSessionReducer(
       if (!state) return state
       return { ...state, scaleReference: undefined }
 
+    case 'REOPEN_SESSION': {
+      if (!state) return state
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { endedAt: _, ...reopened } = state
+      return reopened as ScanSession
+    }
+
     case 'RESET':
       return null
   }
@@ -97,6 +105,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useScanSession(): ScanSessionContextValue {
   const ctx = useContext(ScanSessionContext)
   if (!ctx) {

@@ -7,6 +7,7 @@ import {
 } from '../utils/measurementCalculation'
 import { CorrectionPopup } from './CorrectionPopup'
 import type { CorrectionAction, CorrectionTarget } from './CorrectionPopup'
+import { formatLength } from '../utils/formatLength'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -552,15 +553,6 @@ function renderFloorPlan(
   for (const room of rooms) {
     drawRoomLabel(ctx, room, vt, unit)
   }
-}
-
-// ---------------------------------------------------------------------------
-// Format helper
-// ---------------------------------------------------------------------------
-
-function formatLength(value: number, unit?: string): string {
-  const rounded = Math.round(value * 100) / 100
-  return unit ? `${rounded} ${unit}` : `${rounded}`
 }
 
 // ---------------------------------------------------------------------------

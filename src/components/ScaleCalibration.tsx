@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useScanSession } from '../hooks/useScanSession'
 import { calculatePixelToRealWorldRatio } from '../utils/scaleCalibration'
 import type { MeasurementUnit, Point2D, ScaleReference } from '../types'
@@ -71,14 +71,23 @@ export function ScaleCalibration() {
     dispatch({ type: 'SET_SCALE_REFERENCE', scaleReference })
   }, [line, selectedPhotoIndex, length, unit, dispatch])
 
+  const scaleRef = session?.scaleReference ?? null
   const currentRatio = useMemo(() => {
-    if (!session?.scaleReference) return null
-    return calculatePixelToRealWorldRatio(session.scaleReference)
-  }, [session?.scaleReference])
+    if (!scaleRef) return null
+    return calculatePixelToRealWorldRatio(scaleRef)
+  }, [scaleRef])
 
   // Convert line points to display coordinates for the SVG overlay
-  const displayLine = useMemo(() => {
-    if (!line.start || !imageRef.current) return null
+  const [displayLine, setDisplayLine] = useState<{
+    start: { x: number; y: number }
+    end: { x: number; y: number } | null
+  } | null>(null)
+
+  useEffect(() => {
+    if (!line.start || !imageRef.current) {
+      setDisplayLine(null) // eslint-disable-line react-hooks/set-state-in-effect -- syncing ref dimensions to state
+      return
+    }
     const img = imageRef.current
     const rect = img.getBoundingClientRect()
     const scaleX = rect.width / img.naturalWidth
@@ -93,7 +102,7 @@ export function ScaleCalibration() {
       ? { x: line.end.x * scaleX, y: line.end.y * scaleY }
       : null
 
-    return { start: startDisplay, end: endDisplay }
+    setDisplayLine({ start: startDisplay, end: endDisplay })
   }, [line])
 
   if (photos.length === 0) {

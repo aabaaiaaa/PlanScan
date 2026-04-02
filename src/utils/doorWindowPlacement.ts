@@ -45,7 +45,7 @@ export function projectPointOntoPlane(point: Point3D, wall: Wall): Point3D {
  * The wall corners are ordered: bottom-left, bottom-right, top-right, top-left.
  */
 export function isPointOnWallSurface(point: Point3D, wall: Wall): boolean {
-  const [bl, br, tr, _tl] = wall.corners
+  const [bl, br, tr] = wall.corners
 
   // Wall horizontal direction (bottom-left → bottom-right)
   const wallDir = vec3Normalize(vec3Sub(br, bl))
@@ -103,7 +103,7 @@ export function findNearestWall(
  * Ensures the opening center doesn't float outside the wall bounds.
  */
 export function clampToWallBounds(point: Point3D, wall: Wall): Point3D {
-  const [bl, br, tr, _tl] = wall.corners
+  const [bl, br, tr] = wall.corners
 
   const wallDir = vec3Normalize(vec3Sub(br, bl))
   const upDir = vec3Normalize(vec3Sub(tr, br))
@@ -134,7 +134,7 @@ export function estimateDoorDimensions(wall: Wall): {
   width: number
   height: number
 } {
-  const [_bl, br, tr, _tl] = wall.corners
+  const [, br, tr] = wall.corners
   const upDir = vec3Normalize(vec3Sub(tr, br))
   const wallHeight = vec3Dot(vec3Sub(tr, br), upDir)
   const wallLength = wall.measurements.length
@@ -153,7 +153,7 @@ export function estimateWindowDimensions(wall: Wall): {
   height: number
   sillHeight: number
 } {
-  const [_bl, br, tr, _tl] = wall.corners
+  const [, br, tr] = wall.corners
   const upDir = vec3Normalize(vec3Sub(tr, br))
   const wallHeight = vec3Dot(vec3Sub(tr, br), upDir)
   const wallLength = wall.measurements.length

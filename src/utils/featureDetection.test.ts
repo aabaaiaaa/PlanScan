@@ -129,7 +129,7 @@ function createMockCv(
           _image: CvMat,
           _mask: CvMat,
           keypoints: CvKeyPointVector,
-          _descriptors: CvMat
+          _descriptors: CvMat // eslint-disable-line @typescript-eslint/no-unused-vars
         ) => {
           // Mutate the keypoints vector to return our fixture data
           Object.assign(keypoints, makeMockKeyPointVector(keypointsToReturn))
@@ -143,7 +143,7 @@ function createMockCv(
           _q: CvMat,
           _t: CvMat,
           matches: CvDMatchVectorVector,
-          _k: number
+          _k: number // eslint-disable-line @typescript-eslint/no-unused-vars
         ) => {
           Object.assign(matches, makeMockDMatchVectorVector(knnMatchesToReturn))
         }

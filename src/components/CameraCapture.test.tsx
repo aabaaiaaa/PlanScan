@@ -111,7 +111,7 @@ function TestWrapper({
     if (!sessionCtx.session) {
       sessionCtx.dispatch({ type: 'START_SESSION', id: 'test-session' })
     } else if (!ready) {
-      setReady(true)
+      setReady(true) // eslint-disable-line react-hooks/set-state-in-effect -- test helper
     }
   }, [sessionCtx, ready])
 

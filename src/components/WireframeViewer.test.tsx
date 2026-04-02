@@ -69,45 +69,82 @@ function createMockWebGLContext(): Record<string, any> {
     COMPRESSED_RGBA_S3TC_DXT5_EXT: 0,
   }
 
+  const contextAttributes = {
+    alpha: true, antialias: true, depth: true,
+    failIfMajorPerformanceCaveat: false,
+    premultipliedAlpha: true, preserveDrawingBuffer: false, stencil: true,
+  }
+  const precisionFormat = { rangeMin: 127, rangeMax: 127, precision: 23 }
+  const activeAttrib = { name: 'a', type: 5126, size: 1 }
+  const activeUniform = { name: 'u', type: 5126, size: 1 }
+  const emptyArray: string[] = []
+  const emptyObj = {}
+
+  // Shared canvas element — reused to avoid creating new DOM nodes on every access
+  const mockCanvas = document.createElement('canvas')
+
+  // Pre-allocated no-op function — shared across all unknown property accesses
+  const noop = () => {}
+
+  // Pre-build a static method map so the Proxy returns the SAME function
+  // reference on repeated access (avoids allocating closures per call).
+  const methods: Record<string, any> = {
+    getExtension: () => ext,
+    getParameter: (pname: number) => parameterMap[pname] ?? 0,
+    getShaderPrecisionFormat: () => precisionFormat,
+    createShader: () => emptyObj,
+    createProgram: () => emptyObj,
+    createBuffer: () => emptyObj,
+    createFramebuffer: () => emptyObj,
+    createRenderbuffer: () => emptyObj,
+    createTexture: () => emptyObj,
+    createVertexArray: () => emptyObj,
+    getAttribLocation: () => 0,
+    getUniformLocation: () => emptyObj,
+    getProgramParameter: () => true,
+    getShaderParameter: () => true,
+    getShaderInfoLog: () => '',
+    getProgramInfoLog: () => '',
+    getActiveAttrib: () => activeAttrib,
+    getActiveUniform: () => activeUniform,
+    getSupportedExtensions: () => emptyArray,
+    getContextAttributes: () => contextAttributes,
+    isContextLost: () => false,
+  }
+
+  // Static property values
+  const props: Record<string, any> = {
+    canvas: mockCanvas,
+    drawingBufferWidth: 800,
+    drawingBufferHeight: 600,
+    drawingBufferColorSpace: 'srgb',
+  }
+
+  // Cache resolved lookups so repeated access returns the same reference
+  const cache = new Map<string, any>()
+
   return new Proxy({} as Record<string, any>, {
     get(_target, prop) {
       const p = prop as string
-      // Return GL constants as numbers
-      if (p in GL) return GL[p as keyof typeof GL]
-      if (p === p.toUpperCase() && p.length > 1) return 0
-      // Specific methods
-      if (p === 'getExtension') return () => ext
-      if (p === 'getParameter') return (pname: number) => parameterMap[pname] ?? 0
-      if (p === 'getShaderPrecisionFormat') return () => ({ rangeMin: 127, rangeMax: 127, precision: 23 })
-      if (p === 'createShader') return () => ({})
-      if (p === 'createProgram') return () => ({})
-      if (p === 'createBuffer') return () => ({})
-      if (p === 'createFramebuffer') return () => ({})
-      if (p === 'createRenderbuffer') return () => ({})
-      if (p === 'createTexture') return () => ({})
-      if (p === 'createVertexArray') return () => ({})
-      if (p === 'getAttribLocation') return () => 0
-      if (p === 'getUniformLocation') return () => ({})
-      if (p === 'getProgramParameter') return () => true
-      if (p === 'getShaderParameter') return () => true
-      if (p === 'getShaderInfoLog') return () => ''
-      if (p === 'getProgramInfoLog') return () => ''
-      if (p === 'getActiveAttrib') return () => ({ name: 'a', type: 5126, size: 1 })
-      if (p === 'getActiveUniform') return () => ({ name: 'u', type: 5126, size: 1 })
-      if (p === 'getSupportedExtensions') return () => []
-      if (p === 'getContextAttributes') return () => ({
-        alpha: true, antialias: true, depth: true,
-        failIfMajorPerformanceCaveat: false,
-        premultipliedAlpha: true, preserveDrawingBuffer: false, stencil: true,
-      })
-      if (p === 'isContextLost') return () => false
-      if (p === 'canvas') return document.createElement('canvas')
-      if (p === 'drawingBufferWidth') return 800
-      if (p === 'drawingBufferHeight') return 600
-      if (p === 'drawingBufferColorSpace') return 'srgb'
-      // Default: return a no-op function
-      if (typeof p === 'string') return () => {}
-      return undefined
+      if (cache.has(p)) return cache.get(p)
+
+      let result: any
+      if (p in GL) {
+        result = GL[p as keyof typeof GL]
+      } else if (p in methods) {
+        result = methods[p]
+      } else if (p in props) {
+        result = props[p]
+      } else if (p === p.toUpperCase() && p.length > 1) {
+        result = 0
+      } else if (typeof p === 'string') {
+        result = noop
+      } else {
+        return undefined
+      }
+
+      cache.set(p, result)
+      return result
     },
   })
 }

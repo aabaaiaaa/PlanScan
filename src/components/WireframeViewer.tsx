@@ -11,6 +11,7 @@ import { DetailPanel } from './DetailPanel'
 import type { SelectedElement } from './DetailPanel'
 import { CorrectionPopup } from './CorrectionPopup'
 import type { CorrectionAction, CorrectionTarget } from './CorrectionPopup'
+import { formatLength } from '../utils/formatLength'
 
 // ---------------------------------------------------------------------------
 // Colour palette
@@ -116,34 +117,56 @@ function createCeilingGeometry(boundary: Point3D[]): THREE.LineSegments {
   return createEdgeLoop(boundary, COLORS.ceiling)
 }
 
-function createDoorGeometry(door: Door): THREE.LineSegments {
-  // Render door as a dashed rectangle centered at door.position
+/**
+ * Compute the wall's horizontal direction from its bottom-left and bottom-right corners.
+ * Falls back to the X axis if no wall is provided.
+ */
+function getWallDirection(wall?: Wall): Point3D {
+  if (!wall) return { x: 1, y: 0, z: 0 }
+  const [bl, br] = wall.corners
+  const dx = br.x - bl.x
+  const dz = br.z - bl.z
+  const len = Math.sqrt(dx * dx + dz * dz)
+  if (len < 1e-9) return { x: 1, y: 0, z: 0 }
+  return { x: dx / len, y: 0, z: dz / len }
+}
+
+/**
+ * Compute oriented rectangle corners for a door/window on a wall.
+ * The rectangle extends halfW along the wall direction and halfH along Y.
+ */
+function orientedCorners(p: Point3D, halfW: number, halfH: number, dir: Point3D): Point3D[] {
+  return [
+    { x: p.x - halfW * dir.x, y: p.y - halfH, z: p.z - halfW * dir.z },
+    { x: p.x + halfW * dir.x, y: p.y - halfH, z: p.z + halfW * dir.z },
+    { x: p.x + halfW * dir.x, y: p.y + halfH, z: p.z + halfW * dir.z },
+    { x: p.x - halfW * dir.x, y: p.y + halfH, z: p.z - halfW * dir.z },
+  ]
+}
+
+function createDoorGeometry(door: Door, wall?: Wall): THREE.LineSegments {
   const halfW = door.width / 2
   const halfH = door.height / 2
-  const p = door.position
-  const corners: Point3D[] = [
-    { x: p.x - halfW, y: p.y - halfH, z: p.z },
-    { x: p.x + halfW, y: p.y - halfH, z: p.z },
-    { x: p.x + halfW, y: p.y + halfH, z: p.z },
-    { x: p.x - halfW, y: p.y + halfH, z: p.z },
-  ]
+  const dir = getWallDirection(wall)
+  const corners = orientedCorners(door.position, halfW, halfH, dir)
   return createDashedEdgeLoop(corners, COLORS.door)
 }
 
-function createWindowGeometry(window: Window): THREE.LineSegments {
+function createWindowGeometry(window: Window, wall?: Wall): THREE.LineSegments {
   const halfW = window.width / 2
   const halfH = window.height / 2
   const p = window.position
-  const corners: Point3D[] = [
-    { x: p.x - halfW, y: p.y - halfH, z: p.z },
-    { x: p.x + halfW, y: p.y - halfH, z: p.z },
-    { x: p.x + halfW, y: p.y + halfH, z: p.z },
-    { x: p.x - halfW, y: p.y + halfH, z: p.z },
-  ]
+  const dir = getWallDirection(wall)
+  const corners = orientedCorners(p, halfW, halfH, dir)
+
   // Merge outline + cross into a single LineSegments
   const crossPositions: number[] = [
-    p.x - halfW, p.y, p.z, p.x + halfW, p.y, p.z, // horizontal mid
-    p.x, p.y - halfH, p.z, p.x, p.y + halfH, p.z, // vertical mid
+    // horizontal mid
+    p.x - halfW * dir.x, p.y, p.z - halfW * dir.z,
+    p.x + halfW * dir.x, p.y, p.z + halfW * dir.z,
+    // vertical mid
+    p.x, p.y - halfH, p.z,
+    p.x, p.y + halfH, p.z,
   ]
   const outline = createDashedEdgeLoop(corners, COLORS.window, 0.08, 0.05)
   const outlinePos = outline.geometry.getAttribute('position')
@@ -251,11 +274,6 @@ function createTextSprite(text: string, position: THREE.Vector3, scale = 0.4): T
   return sprite
 }
 
-function formatLength(value: number, unit?: string): string {
-  const rounded = Math.round(value * 100) / 100
-  return unit ? `${rounded} ${unit}` : `${rounded}`
-}
-
 function createWallLabel(wall: Wall, unit?: string): THREE.Sprite {
   const length = calculateWallLength(wall)
   const text = formatLength(length, unit)
@@ -309,6 +327,14 @@ function buildScene(model: BuildingModel): SceneData {
   const hitMeshes: THREE.Mesh[] = []
   const unit = model.isCalibrated ? model.unit : undefined
 
+  // Build wall lookup so doors/windows can find their parent wall for orientation
+  const wallMap = new Map<string, Wall>()
+  for (const room of model.rooms) {
+    for (const wall of room.walls) {
+      wallMap.set(wall.id, wall)
+    }
+  }
+
   for (const room of model.rooms) {
     // Walls
     for (const wall of room.walls) {
@@ -357,19 +383,15 @@ function buildScene(model: BuildingModel): SceneData {
 
     // Doors
     for (const door of room.doors) {
-      const wireframe = createDoorGeometry(door)
+      const doorWall = wallMap.get(door.wallId)
+      const wireframe = createDoorGeometry(door, doorWall)
       root.add(wireframe)
       root.add(createDoorLabel(door, unit))
 
       const halfW = door.width / 2
       const halfH = door.height / 2
-      const p = door.position
-      const doorCorners: Point3D[] = [
-        { x: p.x - halfW, y: p.y - halfH, z: p.z },
-        { x: p.x + halfW, y: p.y - halfH, z: p.z },
-        { x: p.x + halfW, y: p.y + halfH, z: p.z },
-        { x: p.x - halfW, y: p.y + halfH, z: p.z },
-      ]
+      const dir = getWallDirection(doorWall)
+      const doorCorners = orientedCorners(door.position, halfW, halfH, dir)
       const hitMesh = createHitQuad(doorCorners)
       hitMesh.userData = {
         elementType: 'door',
@@ -385,19 +407,15 @@ function buildScene(model: BuildingModel): SceneData {
 
     // Windows
     for (const win of room.windows) {
-      const wireframe = createWindowGeometry(win)
+      const winWall = wallMap.get(win.wallId)
+      const wireframe = createWindowGeometry(win, winWall)
       root.add(wireframe)
       root.add(createWindowLabel(win, unit))
 
       const halfW = win.width / 2
       const halfH = win.height / 2
-      const p = win.position
-      const winCorners: Point3D[] = [
-        { x: p.x - halfW, y: p.y - halfH, z: p.z },
-        { x: p.x + halfW, y: p.y - halfH, z: p.z },
-        { x: p.x + halfW, y: p.y + halfH, z: p.z },
-        { x: p.x - halfW, y: p.y + halfH, z: p.z },
-      ]
+      const dir = getWallDirection(winWall)
+      const winCorners = orientedCorners(win.position, halfW, halfH, dir)
       const hitMesh = createHitQuad(winCorners)
       hitMesh.userData = {
         elementType: 'window',
@@ -526,22 +544,29 @@ export function WireframeViewer({
   // Use refs so the click handler always sees the latest values without
   // needing to be recreated (which would tear down and reinit the scene).
   const editModeRef = useRef(editMode)
-  editModeRef.current = editMode
   const onCorrectionRef = useRef(onCorrection)
-  onCorrectionRef.current = onCorrection
   const splitStateRef = useRef(splitState)
-  splitStateRef.current = splitState
   const mergeStateRef = useRef(mergeState)
-  mergeStateRef.current = mergeState
   const modelRef = useRef(model)
-  modelRef.current = model
+  const animateRef = useRef<() => void>(() => {})
+
+  useEffect(() => {
+    editModeRef.current = editMode
+    onCorrectionRef.current = onCorrection
+    splitStateRef.current = splitState
+    mergeStateRef.current = mergeState
+    modelRef.current = model
+    animateRef.current = () => {
+      frameIdRef.current = requestAnimationFrame(() => animateRef.current())
+      controlsRef.current?.update()
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current)
+      }
+    }
+  })
 
   const animate = useCallback(() => {
-    frameIdRef.current = requestAnimationFrame(animate)
-    controlsRef.current?.update()
-    if (rendererRef.current && sceneRef.current && cameraRef.current) {
-      rendererRef.current.render(sceneRef.current, cameraRef.current)
-    }
+    animateRef.current()
   }, [])
 
   const clearSplitPreview = useCallback(() => {
@@ -885,6 +910,7 @@ export function WireframeViewer({
     if (!scene || !camera || !controls) return
 
     // Clear selection and popup when model changes
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting UI state when model prop changes
     setSelection(null)
     setPopup(null)
     highlightedRef.current = null

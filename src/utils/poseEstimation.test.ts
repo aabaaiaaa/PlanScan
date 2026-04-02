@@ -95,15 +95,16 @@ function createMockCv(): OpenCV {
     ORB: vi.fn() as unknown as OpenCV['ORB'],
     BFMatcher: vi.fn() as unknown as OpenCV['BFMatcher'],
     matFromImageData: vi.fn(() => makeMockMat()),
-    matFromArray: vi.fn((_rows: number, _cols: number, _type: number, _data: number[]) => makeMockMat()),
+    matFromArray: vi.fn(() => makeMockMat()),
     cvtColor: vi.fn(),
     findFundamentalMat: vi.fn(() => makeMockMat()),
     findEssentialMat: vi.fn(
-      (_p1: CvMat, _p2: CvMat, _K: CvMat, _method: number, _prob: number, _thresh: number, _mask: CvMat) =>
-        makeMockMat({ rows: 3, cols: 3 })
+      () => makeMockMat({ rows: 3, cols: 3 })
     ),
     recoverPose: vi.fn(
-      (_E: CvMat, _p1: CvMat, _p2: CvMat, _K: CvMat, R: CvMat, t: CvMat, _mask: CvMat) => {
+      (...args: unknown[]) => {
+        const R = args[4] as CvMat
+        const t = args[5] as CvMat
         Object.assign(R, { data64F: new Float64Array(relR) })
         Object.assign(t, { data64F: new Float64Array([relT.x, relT.y, relT.z]) })
         return 15
@@ -283,7 +284,9 @@ describe('poseEstimation', () => {
     it('returns null when too few inliers from recoverPose', () => {
       const cv = createMockCv()
       cv.recoverPose = vi.fn(
-        (_E: CvMat, _p1: CvMat, _p2: CvMat, _K: CvMat, R: CvMat, t: CvMat, _mask: CvMat) => {
+        (...args: unknown[]) => {
+          const R = args[4] as CvMat
+          const t = args[5] as CvMat
           Object.assign(R, { data64F: new Float64Array(identityRotation()) })
           Object.assign(t, { data64F: new Float64Array([0, 0, 0]) })
           return 3 // too few

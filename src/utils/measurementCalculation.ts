@@ -77,7 +77,7 @@ export function calculateWallLength(wall: Wall): number {
  * Uses the distance between bottom-right and top-right corners.
  */
 export function calculateWallHeight(wall: Wall): number {
-  const [_bl, bottomRight, topRight] = wall.corners
+  const [, bottomRight, topRight] = wall.corners
   return vec3Length(vec3Sub(topRight, bottomRight))
 }
 

@@ -37,11 +37,10 @@ function TestWrapper({
     if (!sessionCtx.session) {
       sessionCtx.dispatch({ type: 'START_SESSION', id: 'test-session' })
     } else if (!ready) {
-      // Add photos after session is started
       for (const photo of photos) {
         sessionCtx.dispatch({ type: 'ADD_PHOTO', photo })
       }
-      setReady(true)
+      setReady(true) // eslint-disable-line react-hooks/set-state-in-effect -- test helper
     }
   }, [sessionCtx, ready, photos])
 

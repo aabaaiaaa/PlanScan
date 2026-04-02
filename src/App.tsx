@@ -20,7 +20,7 @@ interface ErrorBoundaryState {
   error: Error | null
 }
 
-class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+class ErrorBoundary extends Component<{ children: ReactNode; fallbackMessage?: string }, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false, error: null }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
@@ -31,7 +31,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
     if (this.state.hasError) {
       return (
         <div style={{ padding: 32, textAlign: 'center' }}>
-          <h2>Something went wrong</h2>
+          <h2>{this.props.fallbackMessage ?? 'Something went wrong'}</h2>
           <p style={{ color: '#888' }}>{this.state.error?.message}</p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
@@ -77,6 +77,7 @@ function AppContent() {
     reconstruction.reset()
     sessionDispatch({ type: 'START_SESSION', id: crypto.randomUUID() })
     setPhase('capture')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionDispatch, modelDispatch, reconstruction.reset])
 
   // End capture and go to calibration
@@ -134,14 +135,15 @@ function AppContent() {
 
   // Go back to capture to add more photos
   const handleBackToCapture = useCallback(() => {
-    // Re-open the session for additional capture
+    sessionDispatch({ type: 'REOPEN_SESSION' })
     setPhase('capture')
-  }, [])
+  }, [sessionDispatch])
 
   // Retry reconstruction
   const handleRetry = useCallback(() => {
     reconstruction.reset()
     setPhase('reconstruct')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reconstruction.reset])
 
   // Handle correction actions from viewers
@@ -354,19 +356,21 @@ function AppContent() {
             </div>
 
             <div className="app__viewer" data-testid="viewer-container">
-              {viewMode === '3d' ? (
-                <WireframeViewer
-                  model={model}
-                  onCorrection={handleCorrection}
-                  height="calc(100vh - 180px)"
-                />
-              ) : (
-                <FloorPlanViewer
-                  model={model}
-                  onCorrection={handleCorrection}
-                  height="calc(100vh - 180px)"
-                />
-              )}
+              <ErrorBoundary fallbackMessage="Viewer failed to render">
+                {viewMode === '3d' ? (
+                  <WireframeViewer
+                    model={model}
+                    onCorrection={handleCorrection}
+                    height="calc(100vh - 180px)"
+                  />
+                ) : (
+                  <FloorPlanViewer
+                    model={model}
+                    onCorrection={handleCorrection}
+                    height="calc(100vh - 180px)"
+                  />
+                )}
+              </ErrorBoundary>
             </div>
           </div>
         )}
