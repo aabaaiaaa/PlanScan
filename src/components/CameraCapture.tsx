@@ -7,6 +7,8 @@ export function CameraCapture() {
   const { videoRef, status, errorMessage, captureFrame, startCamera, stopCamera } = useCamera()
   const { session, dispatch } = useScanSession()
 
+  // Auto-start camera on mount. On iOS Safari, getUserMedia may require
+  // a recent user gesture — the phase transition button click satisfies this.
   useEffect(() => {
     startCamera()
     return () => {
@@ -14,8 +16,8 @@ export function CameraCapture() {
     }
   }, [startCamera, stopCamera])
 
-  const handleCapture = useCallback(() => {
-    const frame = captureFrame()
+  const handleCapture = useCallback(async () => {
+    const frame = await captureFrame()
     if (!frame || !session) return
 
     const photo: CapturedPhoto = {
@@ -77,6 +79,15 @@ export function CameraCapture() {
         />
         {status === 'requesting' && (
           <p className="camera-capture__status">Requesting camera access…</p>
+        )}
+        {status === 'idle' && (
+          <button
+            className="camera-capture__start-btn"
+            onClick={startCamera}
+            data-testid="start-camera-btn"
+          >
+            Start Camera
+          </button>
         )}
       </div>
 

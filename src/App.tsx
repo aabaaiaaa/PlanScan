@@ -70,15 +70,26 @@ function AppContent() {
   const { model, dispatch: modelDispatch } = useBuildingModel()
   const reconstruction = useReconstruction()
 
+  // Revoke Blob URLs to free memory when discarding photos
+  const revokePhotoUrls = useCallback(() => {
+    if (!session) return
+    for (const photo of session.photos) {
+      if (photo.imageData.startsWith('blob:')) {
+        URL.revokeObjectURL(photo.imageData)
+      }
+    }
+  }, [session])
+
   // Start a new scan session and go to capture
   const handleNewScan = useCallback(() => {
+    revokePhotoUrls()
     sessionDispatch({ type: 'RESET' })
     modelDispatch({ type: 'CLEAR_MODEL' })
     reconstruction.reset()
     sessionDispatch({ type: 'START_SESSION', id: crypto.randomUUID() })
     setPhase('capture')
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionDispatch, modelDispatch, reconstruction.reset])
+  }, [revokePhotoUrls, sessionDispatch, modelDispatch, reconstruction.reset])
 
   // End capture and go to calibration
   const handleDoneCapturing = useCallback(() => {

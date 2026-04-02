@@ -61,12 +61,18 @@ function mockVideoElement() {
 
 function mockCanvas() {
   const drawImage = vi.fn()
-  const toDataURL = vi.fn().mockReturnValue('data:image/jpeg;base64,mockdata')
   HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
     drawImage,
   }) as unknown as typeof HTMLCanvasElement.prototype.getContext
-  HTMLCanvasElement.prototype.toDataURL = toDataURL
-  return { drawImage, toDataURL }
+  // Mock toBlob to invoke callback synchronously with a fake Blob
+  HTMLCanvasElement.prototype.toBlob = vi.fn().mockImplementation(
+    function (this: HTMLCanvasElement, cb: BlobCallback) {
+      cb(new Blob(['mock'], { type: 'image/jpeg' }))
+    },
+  )
+  // jsdom doesn't implement URL.createObjectURL — define it as a mock
+  URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-photo-url')
+  return { drawImage }
 }
 
 function setupMediaDevicesSuccess(stream: MediaStream) {
@@ -226,7 +232,7 @@ describe('CameraCapture', () => {
     expect(capturedSession).not.toBeNull()
     const photo = capturedSession!.session!.photos[0]
     expect(photo.index).toBe(0)
-    expect(photo.imageData).toBe('data:image/jpeg;base64,mockdata')
+    expect(photo.imageData).toBe('blob:mock-photo-url')
     expect(photo.width).toBe(640)
     expect(photo.height).toBe(480)
     expect(photo.tags).toEqual([])

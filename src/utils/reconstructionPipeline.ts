@@ -295,7 +295,7 @@ export async function runReconstruction(
 // ---------------------------------------------------------------------------
 
 /**
- * Convert a CapturedPhoto's data URL to an ImageData object.
+ * Convert a CapturedPhoto's image (data URL or Blob URL) to an ImageData object.
  * Uses createImageBitmap for proper async decoding of the image data.
  */
 async function photoToImageData(photo: CapturedPhoto): Promise<ImageData> {

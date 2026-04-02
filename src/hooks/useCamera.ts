@@ -6,7 +6,7 @@ interface UseCameraResult {
   videoRef: React.RefObject<HTMLVideoElement | null>
   status: CameraStatus
   errorMessage: string | null
-  captureFrame: () => { imageData: string; width: number; height: number } | null
+  captureFrame: () => Promise<{ imageData: string; width: number; height: number } | null>
   stopCamera: () => void
   startCamera: () => void
 }
@@ -18,6 +18,20 @@ const LOW_RES_CONSTRAINTS: MediaStreamConstraints = {
     facingMode: 'environment',
   },
   audio: false,
+}
+
+/** Capture a frame as a Blob URL instead of a data URL to reduce memory usage */
+function canvasToBlobUrl(canvas: HTMLCanvasElement, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return reject(new Error('Canvas toBlob returned null'))
+        resolve(URL.createObjectURL(blob))
+      },
+      'image/jpeg',
+      quality,
+    )
+  })
 }
 
 export function useCamera(): UseCameraResult {
@@ -66,7 +80,7 @@ export function useCamera(): UseCameraResult {
     }
   }, [])
 
-  const captureFrame = useCallback((): { imageData: string; width: number; height: number } | null => {
+  const captureFrame = useCallback(async (): Promise<{ imageData: string; width: number; height: number } | null> => {
     const video = videoRef.current
     if (!video || status !== 'active') return null
 
@@ -78,7 +92,9 @@ export function useCamera(): UseCameraResult {
     if (!ctx) return null
 
     ctx.drawImage(video, 0, 0)
-    const imageData = canvas.toDataURL('image/jpeg', 0.8)
+
+    // Use Blob URL instead of data URL to avoid large base64 strings in memory
+    const imageData = await canvasToBlobUrl(canvas)
 
     return {
       imageData,

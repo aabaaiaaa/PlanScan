@@ -13,6 +13,7 @@ A browser-based 3D room scanner that turns device camera photos into reconstruct
 - **3D Wireframe Viewer** — Three.js scene with orbit controls, color-coded elements, measurement labels, and clickable elements with a detail panel
 - **2D Floor Plan Viewer** — Canvas-based top-down view with architectural conventions (thick wall lines, door arcs, window parallel lines), room/wall labels, and floor switcher for multi-level spaces
 - **Manual Corrections** — Add/remove doors and windows, split and merge rooms, with automatic measurement recalculation
+- **Mobile Support** — iOS/Android compatible with memory-efficient Blob URL photo storage and user-gesture camera activation for Safari
 
 ## Tech Stack
 
@@ -34,6 +35,10 @@ npm run dev
 ```
 
 Open the local URL printed by Vite. Grant camera access when prompted.
+
+### Deployment
+
+The project deploys automatically to GitHub Pages on push to `master` via the CI workflow (`.github/workflows/deploy.yml`), which runs lint, tests, and builds before deploying.
 
 ## Scripts
 
