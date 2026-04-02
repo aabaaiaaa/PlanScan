@@ -65,7 +65,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Given tagged photos and reconstructed rooms, doors and windows are placed on the correct walls. Unit test verifies placement positions are on wall surfaces.
 
 ### TASK-011: Measurement calculation engine
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-009, TASK-010
 - **Description**: Calculate all measurements from the reconstructed geometry: wall lengths (per segment), room dimensions (width x depth), ceiling heights (per room), door dimensions (width x height), and window dimensions (width x height). All measurements use the scale calibration unit. If no scale reference exists, output in arbitrary units with a warning flag. See requirements F6.
 - **Verification**: Given reconstructed rooms with doors and windows, the function returns all measurements. Unit tests verify calculation correctness with known geometry. Test the no-scale-reference fallback.
