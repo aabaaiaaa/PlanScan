@@ -8,6 +8,7 @@ export interface CvMat {
   cols: number
   data: Uint8Array
   data32F: Float32Array
+  data64F: Float64Array
   delete(): void
   isContinuous(): boolean
   type(): number
@@ -83,11 +84,30 @@ export interface OpenCV {
     confidence: number,
     mask: CvMat
   ): CvMat
+  findEssentialMat(
+    points1: CvMat,
+    points2: CvMat,
+    cameraMatrix: CvMat,
+    method: number,
+    prob: number,
+    threshold: number,
+    mask: CvMat
+  ): CvMat
+  recoverPose(
+    E: CvMat,
+    points1: CvMat,
+    points2: CvMat,
+    cameraMatrix: CvMat,
+    R: CvMat,
+    t: CvMat,
+    mask: CvMat
+  ): number
 
   // Constants
   NORM_HAMMING: number
   COLOR_RGBA2GRAY: number
   FM_RANSAC: number
+  RANSAC: number
   CV_32FC2: number
   CV_64F: number
 }

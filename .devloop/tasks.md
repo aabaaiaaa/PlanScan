@@ -41,7 +41,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Given a set of test photos with overlapping content, the function returns matched feature points across pairs. Unit test with fixture images confirms matches are found and outliers are filtered.
 
 ### TASK-007: Camera pose estimation
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-006
 - **Description**: Using the matched features from TASK-006, estimate the relative camera pose (rotation and translation) for each photo. Compute the essential matrix from matched point pairs, decompose it into rotation and translation, and chain poses across the photo sequence. See requirements F4.
 - **Verification**: Given matched features from test photos, the function returns camera poses (position + orientation) for each photo. Unit test verifies poses are geometrically consistent (e.g., sequential photos have incrementally changing positions).
