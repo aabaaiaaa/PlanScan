@@ -119,7 +119,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: The user can navigate through the full flow: start -> capture -> calibrate -> reconstruct -> view. Toggling between 3D and 2D views works. Going back to capture and adding more photos triggers re-reconstruction. `npm run build` completes with no errors.
 
 ### TASK-020: End-to-end integration test
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-019
 - **Description**: Create an integration test that exercises the full pipeline using fixture data: a set of mock photos with known geometry, doorway/window tags, and a scale reference. Verify that the reconstruction produces rooms with approximately correct geometry and measurements. This uses mock/synthetic data rather than real SfM (which is too heavy for automated tests).
 - **Verification**: `npm run test` passes. The integration test creates a scan session with fixtures, runs the pipeline, and asserts that the output model contains the expected rooms, doors, windows, and measurements within a tolerance.
