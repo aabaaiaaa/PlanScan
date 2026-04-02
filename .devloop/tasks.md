@@ -71,7 +71,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Given reconstructed rooms with doors and windows, the function returns all measurements. Unit tests verify calculation correctness with known geometry. Test the no-scale-reference fallback.
 
 ### TASK-012: 3D wireframe viewer
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-011
 - **Description**: Build a WireframeViewer React component using Three.js. Render the reconstructed building model as wireframe edges: walls, floors, ceilings as line segments, doors and windows with distinct styling (different colour or dashed lines), stairs as connected line geometry. Add OrbitControls for rotate/pan/zoom. Render measurement labels as 3D text or sprites positioned alongside the geometry. See requirements F7.
 - **Verification**: Given a reconstructed model, the component renders a navigable 3D wireframe. Walls, doors, windows, and stairs are visually distinct. Orbit controls work (rotate, pan, zoom). Measurements are visible as labels.
