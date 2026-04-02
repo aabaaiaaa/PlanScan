@@ -5,6 +5,8 @@ import {
   calculateWallLength,
   calculateRoomDimensions,
 } from '../utils/measurementCalculation'
+import { CorrectionPopup } from './CorrectionPopup'
+import type { CorrectionAction, CorrectionTarget } from './CorrectionPopup'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -24,10 +26,14 @@ const COLORS = {
 }
 
 const WALL_THICKNESS = 6
-const DOOR_ARC_SEGMENTS = 20
 const LABEL_FONT_SIZE = 12
 const ROOM_LABEL_FONT_SIZE = 14
 const PADDING = 60 // canvas padding in pixels
+
+// Hit testing thresholds (in CSS pixels)
+const DOOR_HIT_RADIUS = 15
+const WINDOW_HIT_RADIUS = 15
+const WALL_HIT_DISTANCE = 10
 
 // ---------------------------------------------------------------------------
 // Geometry helpers
@@ -71,6 +77,23 @@ function dist2D(a: { x: number; y: number }, b: { x: number; y: number }): numbe
 /** Angle from point a to point b in radians */
 function angle2D(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.atan2(b.y - a.y, b.x - a.x)
+}
+
+/** Distance from a point to a line segment in 2D */
+function pointToSegmentDistance(
+  px: number, py: number,
+  ax: number, ay: number,
+  bx: number, by: number,
+): number {
+  const dx = bx - ax
+  const dy = by - ay
+  const len2 = dx * dx + dy * dy
+  if (len2 === 0) return Math.sqrt((px - ax) ** 2 + (py - ay) ** 2)
+  let t = ((px - ax) * dx + (py - ay) * dy) / len2
+  t = Math.max(0, Math.min(1, t))
+  const nearX = ax + t * dx
+  const nearY = ay + t * dy
+  return Math.sqrt((px - nearX) ** 2 + (py - nearY) ** 2)
 }
 
 // ---------------------------------------------------------------------------
@@ -139,6 +162,88 @@ function toCanvas(
     x: p.x * vt.scale + vt.offsetX,
     y: p.y * vt.scale + vt.offsetY,
   }
+}
+
+/** Transform canvas pixel to world XZ (inverse of toCanvas) */
+function fromCanvas(
+  p: { x: number; y: number },
+  vt: ViewportTransform,
+): { x: number; y: number } {
+  return {
+    x: (p.x - vt.offsetX) / vt.scale,
+    y: (p.y - vt.offsetY) / vt.scale,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2D Hit testing
+// ---------------------------------------------------------------------------
+
+type HitResult =
+  | { type: 'door'; door: Door; roomId: string }
+  | { type: 'window'; window: WindowType; roomId: string }
+  | { type: 'wall'; wall: Wall; roomId: string; worldPosition: Point3D }
+
+/**
+ * Perform hit testing on the 2D floor plan canvas.
+ * Priority: doors > windows > walls (drawn top to bottom).
+ */
+function hitTest2D(
+  cssX: number,
+  cssY: number,
+  rooms: Room[],
+  vt: ViewportTransform,
+): HitResult | null {
+  // 1. Check doors first (they're rendered on top)
+  for (const room of rooms) {
+    for (const door of room.doors) {
+      const pos = projectToFloorPlan(door.position)
+      const cp = toCanvas(pos, vt)
+      if (dist2D({ x: cssX, y: cssY }, cp) < DOOR_HIT_RADIUS) {
+        return { type: 'door', door, roomId: room.id }
+      }
+    }
+  }
+
+  // 2. Check windows
+  for (const room of rooms) {
+    for (const win of room.windows) {
+      const pos = projectToFloorPlan(win.position)
+      const cp = toCanvas(pos, vt)
+      if (dist2D({ x: cssX, y: cssY }, cp) < WINDOW_HIT_RADIUS) {
+        return { type: 'window', window: win, roomId: room.id }
+      }
+    }
+  }
+
+  // 3. Check walls
+  let bestWall: Wall | null = null
+  let bestRoomId = ''
+  let bestDist = Infinity
+
+  for (const room of rooms) {
+    for (const wall of room.walls) {
+      const [a, b] = getWallFootprint(wall)
+      const ca = toCanvas(a, vt)
+      const cb = toCanvas(b, vt)
+      const d = pointToSegmentDistance(cssX, cssY, ca.x, ca.y, cb.x, cb.y)
+      if (d < WALL_HIT_DISTANCE && d < bestDist) {
+        bestDist = d
+        bestWall = wall
+        bestRoomId = room.id
+      }
+    }
+  }
+
+  if (bestWall) {
+    // Convert click position back to world coordinates
+    const worldXZ = fromCanvas({ x: cssX, y: cssY }, vt)
+    const floorY = Math.min(bestWall.corners[0].y, bestWall.corners[1].y)
+    const worldPosition: Point3D = { x: worldXZ.x, y: floorY, z: worldXZ.y }
+    return { type: 'wall', wall: bestWall, roomId: bestRoomId, worldPosition }
+  }
+
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -436,6 +541,9 @@ export interface FloorPlanViewerProps {
   floorLevel?: number
   /** Called when the user selects a different floor via the switcher. */
   onFloorChange?: (level: number) => void
+  /** Callback when a correction action is taken (add/remove door or window).
+   *  When provided, an "Edit" toggle button appears in the viewer. */
+  onCorrection?: (action: CorrectionAction) => void
   width?: number | string
   height?: number | string
 }
@@ -450,12 +558,19 @@ export function FloorPlanViewer({
   model,
   floorLevel = 0,
   onFloorChange,
+  onCorrection,
   width = '100%',
   height = 500,
 }: FloorPlanViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [selectedFloor, setSelectedFloor] = useState(floorLevel)
+  const [editMode, setEditMode] = useState(false)
+  const [popup, setPopup] = useState<{ x: number; y: number; target: CorrectionTarget } | null>(null)
+
+  // Store current rooms and viewport for click handler
+  const viewportRef = useRef<ViewportTransform>({ scale: 1, offsetX: 0, offsetY: 0 })
+  const roomsForFloorRef = useRef<Room[]>([])
 
   // Sync internal state if the prop changes externally
   useEffect(() => {
@@ -479,6 +594,72 @@ export function FloorPlanViewer({
 
   const unit = model.isCalibrated ? model.unit : undefined
 
+  // Canvas click handler for edit mode
+  const handleCanvasClick = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!editMode || !onCorrection) return
+
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      const rect = canvas.getBoundingClientRect()
+      const cssX = event.clientX - rect.left
+      const cssY = event.clientY - rect.top
+
+      const rooms = roomsForFloorRef.current
+      const vt = viewportRef.current
+
+      const hitResult = hitTest2D(cssX, cssY, rooms, vt)
+
+      if (!hitResult) {
+        setPopup(null)
+        return
+      }
+
+      // Position the popup at the click location, clamped to container bounds
+      const container = containerRef.current
+      const containerRect = container?.getBoundingClientRect()
+      const maxX = containerRect ? containerRect.width - 160 : cssX
+      const maxY = containerRect ? containerRect.height - 150 : cssY
+      const popupX = Math.min(cssX, maxX)
+      const popupY = Math.min(cssY, maxY)
+
+      if (hitResult.type === 'wall') {
+        setPopup({
+          x: popupX,
+          y: popupY,
+          target: {
+            type: 'wall',
+            roomId: hitResult.roomId,
+            wall: hitResult.wall,
+            clickPosition: hitResult.worldPosition,
+          },
+        })
+      } else if (hitResult.type === 'door') {
+        setPopup({
+          x: popupX,
+          y: popupY,
+          target: {
+            type: 'door',
+            roomId: hitResult.roomId,
+            doorId: hitResult.door.id,
+          },
+        })
+      } else if (hitResult.type === 'window') {
+        setPopup({
+          x: popupX,
+          y: popupY,
+          target: {
+            type: 'window',
+            roomId: hitResult.roomId,
+            windowId: hitResult.window.id,
+          },
+        })
+      }
+    },
+    [editMode, onCorrection],
+  )
+
   // Render the floor plan whenever model or floor level changes
   useEffect(() => {
     const canvas = canvasRef.current
@@ -501,7 +682,17 @@ export function FloorPlanViewer({
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
     const rooms = getRoomsForFloor(selectedFloor)
+    roomsForFloorRef.current = rooms
+
+    // Store the viewport transform for hit testing
+    if (rooms.length > 0) {
+      viewportRef.current = computeViewport(rooms, w, h)
+    }
+
     renderFloorPlan(ctx, w, h, rooms, unit)
+
+    // Clear popup when floor or model changes
+    setPopup(null)
   }, [model, selectedFloor, getRoomsForFloor, unit])
 
   // Re-render on resize
@@ -526,12 +717,37 @@ export function FloorPlanViewer({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
       const rooms = getRoomsForFloor(selectedFloor)
+      roomsForFloorRef.current = rooms
+
+      if (rooms.length > 0) {
+        viewportRef.current = computeViewport(rooms, w, h)
+      }
+
       renderFloorPlan(ctx, w, h, rooms, unit)
     }
 
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [model, selectedFloor, getRoomsForFloor, unit])
+
+  const handleToggleEditMode = useCallback(() => {
+    setEditMode((prev) => {
+      if (!prev) {
+        // Entering edit mode
+      } else {
+        // Leaving edit mode: clear popup
+        setPopup(null)
+      }
+      return !prev
+    })
+  }, [])
+
+  const handleCorrectionAction = useCallback(
+    (action: CorrectionAction) => {
+      onCorrection?.(action)
+    },
+    [onCorrection],
+  )
 
   return (
     <div
@@ -548,8 +764,52 @@ export function FloorPlanViewer({
       <canvas
         ref={canvasRef}
         data-testid="floor-plan-canvas"
-        style={{ display: 'block', width: '100%', height: '100%' }}
+        onClick={handleCanvasClick}
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          cursor: editMode ? 'crosshair' : 'default',
+        }}
       />
+
+      {/* Edit mode toggle — only shown when onCorrection is provided */}
+      {onCorrection && (
+        <button
+          data-testid="edit-mode-toggle-2d"
+          onClick={handleToggleEditMode}
+          style={{
+            position: 'absolute',
+            top: 12,
+            left: 12,
+            padding: '6px 14px',
+            fontSize: 13,
+            fontFamily: 'system-ui, sans-serif',
+            fontWeight: 600,
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+            background: editMode ? '#ff6b6b' : 'rgba(0,0,0,0.15)',
+            color: editMode ? '#fff' : '#333',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+            zIndex: 10,
+          }}
+        >
+          {editMode ? 'Exit Edit' : 'Edit'}
+        </button>
+      )}
+
+      {/* Correction popup (edit mode) */}
+      {popup && onCorrection && (
+        <CorrectionPopup
+          x={popup.x}
+          y={popup.y}
+          target={popup.target}
+          onAction={handleCorrectionAction}
+          onClose={() => setPopup(null)}
+        />
+      )}
+
       {showFloorSwitcher && (
         <div
           data-testid="floor-switcher"

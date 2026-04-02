@@ -9,6 +9,8 @@ import {
 } from '../utils/measurementCalculation'
 import { DetailPanel } from './DetailPanel'
 import type { SelectedElement } from './DetailPanel'
+import { CorrectionPopup } from './CorrectionPopup'
+import type { CorrectionAction, CorrectionTarget } from './CorrectionPopup'
 
 // ---------------------------------------------------------------------------
 // Colour palette
@@ -480,12 +482,16 @@ function setWireframeColor(wireframe: THREE.LineSegments, color: number) {
 
 export interface WireframeViewerProps {
   model: BuildingModel
+  /** Callback when a correction action is taken (add/remove door or window).
+   *  When provided, an "Edit" toggle button appears in the viewer. */
+  onCorrection?: (action: CorrectionAction) => void
   width?: number | string
   height?: number | string
 }
 
 export function WireframeViewer({
   model,
+  onCorrection,
   width = '100%',
   height = 600,
 }: WireframeViewerProps) {
@@ -502,6 +508,15 @@ export function WireframeViewer({
   const highlightedRef = useRef<{ wireframe: THREE.LineSegments; originalColor: number } | null>(null)
 
   const [selection, setSelection] = useState<SelectedElement | null>(null)
+  const [editMode, setEditMode] = useState(false)
+  const [popup, setPopup] = useState<{ x: number; y: number; target: CorrectionTarget } | null>(null)
+
+  // Use refs so the click handler always sees the latest values without
+  // needing to be recreated (which would tear down and reinit the scene).
+  const editModeRef = useRef(editMode)
+  editModeRef.current = editMode
+  const onCorrectionRef = useRef(onCorrection)
+  onCorrectionRef.current = onCorrection
 
   const animate = useCallback(() => {
     frameIdRef.current = requestAnimationFrame(animate)
@@ -536,11 +551,59 @@ export function WireframeViewer({
 
     if (intersects.length === 0) {
       setSelection(null)
+      setPopup(null)
       return
     }
 
-    const hit = intersects[0].object
-    const data = hit.userData
+    const hit = intersects[0]
+    const data = hit.object.userData
+
+    // --- Edit mode: show correction popup ---
+    if (editModeRef.current && onCorrectionRef.current) {
+      const screenX = event.clientX - rect.left
+      const screenY = event.clientY - rect.top
+
+      if (data.elementType === 'wall') {
+        const hitPoint = hit.point
+        setPopup({
+          x: Math.min(screenX, rect.width - 160),
+          y: Math.min(screenY, rect.height - 150),
+          target: {
+            type: 'wall',
+            roomId: data.roomId,
+            wall: data.wall,
+            clickPosition: { x: hitPoint.x, y: hitPoint.y, z: hitPoint.z },
+          },
+        })
+      } else if (data.elementType === 'door') {
+        setPopup({
+          x: Math.min(screenX, rect.width - 160),
+          y: Math.min(screenY, rect.height - 100),
+          target: {
+            type: 'door',
+            roomId: data.roomId,
+            doorId: data.door.id,
+          },
+        })
+      } else if (data.elementType === 'window') {
+        setPopup({
+          x: Math.min(screenX, rect.width - 160),
+          y: Math.min(screenY, rect.height - 100),
+          target: {
+            type: 'window',
+            roomId: data.roomId,
+            windowId: data.window.id,
+          },
+        })
+      } else {
+        setPopup(null)
+      }
+      setSelection(null)
+      return
+    }
+
+    // --- Normal mode: selection + highlight ---
+    setPopup(null)
 
     // Highlight the wireframe
     if (data.wireframe) {
@@ -658,8 +721,9 @@ export function WireframeViewer({
     const controls = controlsRef.current
     if (!scene || !camera || !controls) return
 
-    // Clear selection when model changes
+    // Clear selection and popup when model changes
     setSelection(null)
+    setPopup(null)
     highlightedRef.current = null
 
     // Remove previous model group
@@ -724,6 +788,31 @@ export function WireframeViewer({
     setSelection(null)
   }, [])
 
+  const handleToggleEditMode = useCallback(() => {
+    setEditMode((prev) => {
+      const next = !prev
+      if (next) {
+        // Entering edit mode: clear selection and detail panel
+        setSelection(null)
+        if (highlightedRef.current) {
+          setWireframeColor(highlightedRef.current.wireframe, highlightedRef.current.originalColor)
+          highlightedRef.current = null
+        }
+      } else {
+        // Leaving edit mode: clear popup
+        setPopup(null)
+      }
+      return next
+    })
+  }, [])
+
+  const handleCorrectionAction = useCallback(
+    (action: CorrectionAction) => {
+      onCorrection?.(action)
+    },
+    [onCorrection],
+  )
+
   const unit = model.isCalibrated ? model.unit : undefined
 
   return (
@@ -745,7 +834,48 @@ export function WireframeViewer({
           height: '100%',
         }}
       />
-      <DetailPanel selection={selection} unit={unit} onClose={handleClosePanel} />
+
+      {/* Edit mode toggle — only shown when onCorrection is provided */}
+      {onCorrection && (
+        <button
+          data-testid="edit-mode-toggle"
+          onClick={handleToggleEditMode}
+          style={{
+            position: 'absolute',
+            top: 12,
+            left: 12,
+            padding: '6px 14px',
+            fontSize: 13,
+            fontFamily: 'system-ui, sans-serif',
+            fontWeight: 600,
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+            background: editMode ? '#ff6b6b' : 'rgba(255,255,255,0.15)',
+            color: '#fff',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+            zIndex: 10,
+          }}
+        >
+          {editMode ? 'Exit Edit' : 'Edit'}
+        </button>
+      )}
+
+      {/* Correction popup (edit mode) */}
+      {popup && onCorrection && (
+        <CorrectionPopup
+          x={popup.x}
+          y={popup.y}
+          target={popup.target}
+          onAction={handleCorrectionAction}
+          onClose={() => setPopup(null)}
+        />
+      )}
+
+      {/* Detail panel (normal mode) */}
+      {!editMode && (
+        <DetailPanel selection={selection} unit={unit} onClose={handleClosePanel} />
+      )}
     </div>
   )
 }

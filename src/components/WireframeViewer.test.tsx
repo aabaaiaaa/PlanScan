@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import type { BuildingModel, Room, Wall, Door, Window, Staircase } from '../types'
 import type { Point3D } from '../types'
 
@@ -370,5 +370,52 @@ describe('WireframeViewer', () => {
   it('renders the canvas container for 3D content', () => {
     render(<WireframeViewer model={makeModel()} />)
     expect(screen.getByTestId('wireframe-canvas-container')).toBeInTheDocument()
+  })
+
+  // --- Edit mode / correction tests ---
+
+  describe('edit mode', () => {
+    it('does not show the edit toggle when onCorrection is not provided', () => {
+      render(<WireframeViewer model={makeModel()} />)
+      expect(screen.queryByTestId('edit-mode-toggle')).not.toBeInTheDocument()
+    })
+
+    it('shows the edit toggle when onCorrection is provided', () => {
+      const onCorrection = vi.fn()
+      render(<WireframeViewer model={makeModel()} onCorrection={onCorrection} />)
+      expect(screen.getByTestId('edit-mode-toggle')).toBeInTheDocument()
+      expect(screen.getByTestId('edit-mode-toggle').textContent).toBe('Edit')
+    })
+
+    it('toggles edit mode text when the edit button is clicked', () => {
+      const onCorrection = vi.fn()
+      render(<WireframeViewer model={makeModel()} onCorrection={onCorrection} />)
+
+      const toggle = screen.getByTestId('edit-mode-toggle')
+      expect(toggle.textContent).toBe('Edit')
+
+      fireEvent.click(toggle)
+      expect(toggle.textContent).toBe('Exit Edit')
+
+      fireEvent.click(toggle)
+      expect(toggle.textContent).toBe('Edit')
+    })
+
+    it('hides the detail panel when in edit mode', () => {
+      const onCorrection = vi.fn()
+      render(<WireframeViewer model={makeModel()} onCorrection={onCorrection} />)
+
+      // Enter edit mode
+      fireEvent.click(screen.getByTestId('edit-mode-toggle'))
+
+      // Detail panel should not be rendered (there's no selection anyway, but the slot is suppressed)
+      expect(screen.queryByTestId('detail-panel')).not.toBeInTheDocument()
+    })
+
+    it('does not show a correction popup initially', () => {
+      const onCorrection = vi.fn()
+      render(<WireframeViewer model={makeModel()} onCorrection={onCorrection} />)
+      expect(screen.queryByTestId('correction-popup')).not.toBeInTheDocument()
+    })
   })
 })

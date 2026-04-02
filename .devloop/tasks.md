@@ -95,7 +95,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: With a multi-level model, the floor switcher appears and toggles between floors correctly. With a single-floor model, the switcher is hidden. Component test verifies switcher visibility and floor selection state.
 
 ### TASK-016: Manual door/window corrections
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-012, TASK-014
 - **Description**: Allow the user to manually add or remove doors and windows on the reconstructed model. In the 3D view or floor plan view, the user can click a wall location to add a door or window (with a type selector). They can also click an existing door/window to remove it. Measurements update automatically after any correction. See requirements F9.
 - **Verification**: User can add a door to a wall by clicking and selecting "door". The door appears in both the 3D and 2D views. Removing a door updates both views. Measurements recalculate after changes.

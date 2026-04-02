@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
-import type { BuildingModel, Room, Wall, Door, Window, Staircase } from '../types'
+import type { BuildingModel, Room, Wall, Door, Window } from '../types'
 import type { Point3D } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -495,6 +495,55 @@ describe('FloorPlanViewer', () => {
       expect(screen.getByTestId('floor-button-1')).toBeInTheDocument()
       expect(screen.getByTestId('floor-button-2')).toBeInTheDocument()
       expect(screen.getByTestId('floor-button-2').textContent).toBe('Floor 2')
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // Edit mode / correction tests (TASK-016)
+  // ---------------------------------------------------------------------------
+
+  describe('edit mode', () => {
+    it('does not show the edit toggle when onCorrection is not provided', () => {
+      render(<FloorPlanViewer model={makeModel()} />)
+      expect(screen.queryByTestId('edit-mode-toggle-2d')).not.toBeInTheDocument()
+    })
+
+    it('shows the edit toggle when onCorrection is provided', () => {
+      const onCorrection = vi.fn()
+      render(<FloorPlanViewer model={makeModel()} onCorrection={onCorrection} />)
+      expect(screen.getByTestId('edit-mode-toggle-2d')).toBeInTheDocument()
+      expect(screen.getByTestId('edit-mode-toggle-2d').textContent).toBe('Edit')
+    })
+
+    it('toggles edit mode text when the edit button is clicked', () => {
+      const onCorrection = vi.fn()
+      render(<FloorPlanViewer model={makeModel()} onCorrection={onCorrection} />)
+
+      const toggle = screen.getByTestId('edit-mode-toggle-2d')
+      expect(toggle.textContent).toBe('Edit')
+
+      fireEvent.click(toggle)
+      expect(toggle.textContent).toBe('Exit Edit')
+
+      fireEvent.click(toggle)
+      expect(toggle.textContent).toBe('Edit')
+    })
+
+    it('changes canvas cursor to crosshair in edit mode', () => {
+      const onCorrection = vi.fn()
+      render(<FloorPlanViewer model={makeModel()} onCorrection={onCorrection} />)
+
+      const canvas = screen.getByTestId('floor-plan-canvas')
+      expect(canvas.style.cursor).toBe('default')
+
+      fireEvent.click(screen.getByTestId('edit-mode-toggle-2d'))
+      expect(canvas.style.cursor).toBe('crosshair')
+    })
+
+    it('does not show a correction popup initially', () => {
+      const onCorrection = vi.fn()
+      render(<FloorPlanViewer model={makeModel()} onCorrection={onCorrection} />)
+      expect(screen.queryByTestId('correction-popup')).not.toBeInTheDocument()
     })
   })
 })
