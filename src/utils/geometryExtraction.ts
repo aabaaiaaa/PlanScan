@@ -11,6 +11,7 @@ import type {
   CapturedPhoto,
 } from '../types'
 import type { PointCloud, TriangulatedPoint } from './triangulation'
+import { placeDoorsAndWindows } from './doorWindowPlacement'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -860,15 +861,18 @@ export function extractRoomGeometry(
     rooms.push(room)
   }
 
-  // Step 8: Detect staircases
-  const staircases = detectStaircases(rooms, doorwayPositions)
+  // Step 8: Place doors and windows from tagged photos
+  const roomsWithOpenings = placeDoorsAndWindows(rooms, photos)
+
+  // Step 9: Detect staircases
+  const staircases = detectStaircases(roomsWithOpenings, doorwayPositions)
 
   // Compute total floor levels
-  const levelSet = new Set(rooms.map((r) => r.floor.level))
+  const levelSet = new Set(roomsWithOpenings.map((r) => r.floor.level))
   const floorLevels = Math.max(1, levelSet.size)
 
   return {
-    rooms,
+    rooms: roomsWithOpenings,
     staircases,
     isCalibrated: pointCloud.isScaled,
     floorLevels,

@@ -59,7 +59,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Given a point cloud and doorway tags, the function returns a set of rooms, each with walls, floor, and ceiling geometry. Unit test with synthetic point cloud data verifies correct plane detection and room segmentation.
 
 ### TASK-010: Door and window placement
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-009
 - **Description**: Map the user's door and window tags onto the reconstructed geometry. For each tagged photo, use its estimated camera pose to determine the 3D position and the nearest wall surface. Place a door or window object at that wall location with estimated dimensions based on the surrounding geometry. See requirements F5.
 - **Verification**: Given tagged photos and reconstructed rooms, doors and windows are placed on the correct walls. Unit test verifies placement positions are on wall surfaces.
