@@ -281,7 +281,7 @@ describe('WireframeViewer', () => {
 
   it('initializes the renderer and appends a canvas to the container', () => {
     render(<WireframeViewer model={makeModel()} />)
-    const container = screen.getByTestId('wireframe-viewer')
+    const container = screen.getByTestId('wireframe-canvas-container')
     expect(container.querySelector('canvas')).toBeInTheDocument()
   })
 
@@ -358,5 +358,17 @@ describe('WireframeViewer', () => {
   it('starts the animation loop via requestAnimationFrame', () => {
     render(<WireframeViewer model={makeModel()} />)
     expect(window.requestAnimationFrame).toHaveBeenCalled()
+  })
+
+  // --- Selection / detail panel tests ---
+
+  it('does not show the detail panel initially (no selection)', () => {
+    render(<WireframeViewer model={makeModel()} />)
+    expect(screen.queryByTestId('detail-panel')).not.toBeInTheDocument()
+  })
+
+  it('renders the canvas container for 3D content', () => {
+    render(<WireframeViewer model={makeModel()} />)
+    expect(screen.getByTestId('wireframe-canvas-container')).toBeInTheDocument()
   })
 })

@@ -77,7 +77,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Given a reconstructed model, the component renders a navigable 3D wireframe. Walls, doors, windows, and stairs are visually distinct. Orbit controls work (rotate, pan, zoom). Measurements are visible as labels.
 
 ### TASK-013: Clickable element detail panel
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-012
 - **Description**: Add raycasting to the 3D wireframe viewer so that clicking on a room, wall, door, or window highlights it and opens a side panel showing its detailed measurements (e.g., clicking a room shows width, depth, ceiling height; clicking a door shows width and height). See requirements F7.
 - **Verification**: Clicking a wall in the 3D view highlights it and shows its length in the detail panel. Clicking a room shows its dimensions. Component test verifies the panel renders with correct data when a selection is made.

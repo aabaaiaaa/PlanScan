@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { BuildingModel, Wall, Door, Window, Room, Staircase } from '../types'
@@ -7,6 +7,8 @@ import {
   calculateWallLength,
   calculateRoomDimensions,
 } from '../utils/measurementCalculation'
+import { DetailPanel } from './DetailPanel'
+import type { SelectedElement } from './DetailPanel'
 
 // ---------------------------------------------------------------------------
 // Colour palette
@@ -21,6 +23,7 @@ const COLORS = {
   stair: 0xffaa00,
   label: '#ffffff',
   background: 0x1a1a2e,
+  highlight: 0xffff00,
 }
 
 // ---------------------------------------------------------------------------
@@ -68,6 +71,30 @@ function createDashedEdgeLoop(
   const line = new THREE.LineSegments(geometry, material)
   line.computeLineDistances()
   return line
+}
+
+// ---------------------------------------------------------------------------
+// Hit-test mesh helpers (invisible meshes used for raycasting)
+// ---------------------------------------------------------------------------
+
+/** Create an invisible mesh from 4 corner points for click detection */
+function createHitQuad(corners: Point3D[]): THREE.Mesh {
+  const positions = new Float32Array([
+    corners[0].x, corners[0].y, corners[0].z,
+    corners[1].x, corners[1].y, corners[1].z,
+    corners[2].x, corners[2].y, corners[2].z,
+    corners[2].x, corners[2].y, corners[2].z,
+    corners[3].x, corners[3].y, corners[3].z,
+    corners[0].x, corners[0].y, corners[0].z,
+  ])
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  geometry.computeVertexNormals()
+  const material = new THREE.MeshBasicMaterial({
+    visible: false,
+    side: THREE.DoubleSide,
+  })
+  return new THREE.Mesh(geometry, material)
 }
 
 // ---------------------------------------------------------------------------
@@ -270,20 +297,57 @@ function createWindowLabel(win: Window, unit?: string): THREE.Sprite {
 // Scene builder
 // ---------------------------------------------------------------------------
 
-function buildScene(model: BuildingModel): THREE.Group {
+interface SceneData {
+  group: THREE.Group
+  hitMeshes: THREE.Mesh[]
+}
+
+function buildScene(model: BuildingModel): SceneData {
   const root = new THREE.Group()
+  const hitMeshes: THREE.Mesh[] = []
   const unit = model.isCalibrated ? model.unit : undefined
 
   for (const room of model.rooms) {
     // Walls
     for (const wall of room.walls) {
-      root.add(createWallGeometry(wall))
+      const wireframe = createWallGeometry(wall)
+      root.add(wireframe)
       root.add(createWallLabel(wall, unit))
+
+      // Hit-test mesh for the wall
+      const hitMesh = createHitQuad(wall.corners)
+      hitMesh.userData = {
+        elementType: 'wall',
+        wall,
+        roomId: room.id,
+        roomName: room.name,
+        wireframe,
+        originalColor: COLORS.wall,
+      }
+      root.add(hitMesh)
+      hitMeshes.push(hitMesh)
     }
 
     // Floor and ceiling
     if (room.floor.boundary.length > 0) {
       root.add(createFloorGeometry(room.floor.boundary))
+
+      // Hit-test mesh for the room (click floor to select room)
+      if (room.floor.boundary.length >= 3) {
+        const floorHit = createHitQuad(
+          room.floor.boundary.length >= 4
+            ? room.floor.boundary.slice(0, 4)
+            : [...room.floor.boundary, room.floor.boundary[0]],
+        )
+        floorHit.userData = {
+          elementType: 'room',
+          room,
+          wireframe: null,
+          originalColor: COLORS.floor,
+        }
+        root.add(floorHit)
+        hitMeshes.push(floorHit)
+      }
     }
     if (room.ceiling.boundary.length > 0) {
       root.add(createCeilingGeometry(room.ceiling.boundary))
@@ -291,14 +355,58 @@ function buildScene(model: BuildingModel): THREE.Group {
 
     // Doors
     for (const door of room.doors) {
-      root.add(createDoorGeometry(door))
+      const wireframe = createDoorGeometry(door)
+      root.add(wireframe)
       root.add(createDoorLabel(door, unit))
+
+      const halfW = door.width / 2
+      const halfH = door.height / 2
+      const p = door.position
+      const doorCorners: Point3D[] = [
+        { x: p.x - halfW, y: p.y - halfH, z: p.z },
+        { x: p.x + halfW, y: p.y - halfH, z: p.z },
+        { x: p.x + halfW, y: p.y + halfH, z: p.z },
+        { x: p.x - halfW, y: p.y + halfH, z: p.z },
+      ]
+      const hitMesh = createHitQuad(doorCorners)
+      hitMesh.userData = {
+        elementType: 'door',
+        door,
+        roomId: room.id,
+        roomName: room.name,
+        wireframe,
+        originalColor: COLORS.door,
+      }
+      root.add(hitMesh)
+      hitMeshes.push(hitMesh)
     }
 
     // Windows
     for (const win of room.windows) {
-      root.add(createWindowGeometry(win))
+      const wireframe = createWindowGeometry(win)
+      root.add(wireframe)
       root.add(createWindowLabel(win, unit))
+
+      const halfW = win.width / 2
+      const halfH = win.height / 2
+      const p = win.position
+      const winCorners: Point3D[] = [
+        { x: p.x - halfW, y: p.y - halfH, z: p.z },
+        { x: p.x + halfW, y: p.y - halfH, z: p.z },
+        { x: p.x + halfW, y: p.y + halfH, z: p.z },
+        { x: p.x - halfW, y: p.y + halfH, z: p.z },
+      ]
+      const hitMesh = createHitQuad(winCorners)
+      hitMesh.userData = {
+        elementType: 'window',
+        window: win,
+        roomId: room.id,
+        roomName: room.name,
+        wireframe,
+        originalColor: COLORS.window,
+      }
+      root.add(hitMesh)
+      hitMeshes.push(hitMesh)
     }
 
     // Room label
@@ -316,7 +424,7 @@ function buildScene(model: BuildingModel): THREE.Group {
     root.add(createTextSprite('Stairs', mid, 0.35))
   }
 
-  return root
+  return { group: root, hitMeshes }
 }
 
 /** Compute a bounding box around the model to position the camera */
@@ -352,6 +460,21 @@ function computeModelBounds(model: BuildingModel): THREE.Box3 {
 }
 
 // ---------------------------------------------------------------------------
+// Highlighting helpers
+// ---------------------------------------------------------------------------
+
+function setWireframeColor(wireframe: THREE.LineSegments, color: number) {
+  const mat = wireframe.material
+  if (Array.isArray(mat)) {
+    mat.forEach((m) => {
+      if ('color' in m) (m as THREE.LineBasicMaterial).color.setHex(color)
+    })
+  } else if ('color' in mat) {
+    (mat as THREE.LineBasicMaterial).color.setHex(color)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // React component
 // ---------------------------------------------------------------------------
 
@@ -367,12 +490,18 @@ export function WireframeViewer({
   height = 600,
 }: WireframeViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const modelGroupRef = useRef<THREE.Group | null>(null)
+  const hitMeshesRef = useRef<THREE.Mesh[]>([])
   const frameIdRef = useRef<number>(0)
+  const raycasterRef = useRef(new THREE.Raycaster())
+  const highlightedRef = useRef<{ wireframe: THREE.LineSegments; originalColor: number } | null>(null)
+
+  const [selection, setSelection] = useState<SelectedElement | null>(null)
 
   const animate = useCallback(() => {
     frameIdRef.current = requestAnimationFrame(animate)
@@ -382,9 +511,84 @@ export function WireframeViewer({
     }
   }, [])
 
+  // Click handler for raycasting
+  const handleClick = useCallback((event: MouseEvent) => {
+    const container = canvasContainerRef.current
+    const camera = cameraRef.current
+    if (!container || !camera) return
+
+    const rect = container.getBoundingClientRect()
+    const mouse = new THREE.Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+    )
+
+    const raycaster = raycasterRef.current
+    raycaster.setFromCamera(mouse, camera)
+
+    const intersects = raycaster.intersectObjects(hitMeshesRef.current, false)
+
+    // Restore previous highlight
+    if (highlightedRef.current) {
+      setWireframeColor(highlightedRef.current.wireframe, highlightedRef.current.originalColor)
+      highlightedRef.current = null
+    }
+
+    if (intersects.length === 0) {
+      setSelection(null)
+      return
+    }
+
+    const hit = intersects[0].object
+    const data = hit.userData
+
+    // Highlight the wireframe
+    if (data.wireframe) {
+      setWireframeColor(data.wireframe, COLORS.highlight)
+      highlightedRef.current = {
+        wireframe: data.wireframe,
+        originalColor: data.originalColor,
+      }
+    }
+
+    // Build selection
+    switch (data.elementType) {
+      case 'wall':
+        setSelection({
+          type: 'wall',
+          wall: data.wall,
+          roomId: data.roomId,
+          roomName: data.roomName,
+        })
+        break
+      case 'room':
+        setSelection({
+          type: 'room',
+          room: data.room,
+        })
+        break
+      case 'door':
+        setSelection({
+          type: 'door',
+          door: data.door,
+          roomId: data.roomId,
+          roomName: data.roomName,
+        })
+        break
+      case 'window':
+        setSelection({
+          type: 'window',
+          window: data.window,
+          roomId: data.roomId,
+          roomName: data.roomName,
+        })
+        break
+    }
+  }, [])
+
   // Initialize Three.js scene once
   useEffect(() => {
-    const container = containerRef.current
+    const container = canvasContainerRef.current
     if (!container) return
 
     // Scene
@@ -418,6 +622,9 @@ export function WireframeViewer({
     // Ambient light (helps sprites be visible)
     scene.add(new THREE.AmbientLight(0xffffff, 1))
 
+    // Click handler for raycasting
+    renderer.domElement.addEventListener('click', handleClick)
+
     // Start render loop
     animate()
 
@@ -434,6 +641,7 @@ export function WireframeViewer({
 
     return () => {
       window.removeEventListener('resize', onResize)
+      renderer.domElement.removeEventListener('click', handleClick)
       cancelAnimationFrame(frameIdRef.current)
       controls.dispose()
       renderer.dispose()
@@ -441,7 +649,7 @@ export function WireframeViewer({
         container.removeChild(renderer.domElement)
       }
     }
-  }, [animate])
+  }, [animate, handleClick])
 
   // Update scene when model changes
   useEffect(() => {
@@ -449,6 +657,10 @@ export function WireframeViewer({
     const camera = cameraRef.current
     const controls = controlsRef.current
     if (!scene || !camera || !controls) return
+
+    // Clear selection when model changes
+    setSelection(null)
+    highlightedRef.current = null
 
     // Remove previous model group
     if (modelGroupRef.current) {
@@ -467,14 +679,23 @@ export function WireframeViewer({
           obj.material.map?.dispose()
           obj.material.dispose()
         }
+        if (obj instanceof THREE.Mesh) {
+          obj.geometry.dispose()
+          if (Array.isArray(obj.material)) {
+            obj.material.forEach((m) => m.dispose())
+          } else {
+            obj.material.dispose()
+          }
+        }
       })
       modelGroupRef.current = null
     }
 
     // Build new scene objects
-    const group = buildScene(model)
+    const { group, hitMeshes } = buildScene(model)
     scene.add(group)
     modelGroupRef.current = group
+    hitMeshesRef.current = hitMeshes
 
     // Fit camera to model
     const bounds = computeModelBounds(model)
@@ -495,6 +716,16 @@ export function WireframeViewer({
     controls.update()
   }, [model])
 
+  const handleClosePanel = useCallback(() => {
+    if (highlightedRef.current) {
+      setWireframeColor(highlightedRef.current.wireframe, highlightedRef.current.originalColor)
+      highlightedRef.current = null
+    }
+    setSelection(null)
+  }, [])
+
+  const unit = model.isCalibrated ? model.unit : undefined
+
   return (
     <div
       ref={containerRef}
@@ -505,6 +736,16 @@ export function WireframeViewer({
         position: 'relative',
         overflow: 'hidden',
       }}
-    />
+    >
+      <div
+        ref={canvasContainerRef}
+        data-testid="wireframe-canvas-container"
+        style={{
+          width: '100%',
+          height: '100%',
+        }}
+      />
+      <DetailPanel selection={selection} unit={unit} onClose={handleClosePanel} />
+    </div>
   )
 }
