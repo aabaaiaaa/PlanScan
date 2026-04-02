@@ -511,18 +511,46 @@ export function WireframeViewer({
   const [editMode, setEditMode] = useState(false)
   const [popup, setPopup] = useState<{ x: number; y: number; target: CorrectionTarget } | null>(null)
 
+  // Split/merge interaction state
+  const [splitState, setSplitState] = useState<{
+    roomId: string
+    startPoint?: Point3D
+  } | null>(null)
+  const [mergeState, setMergeState] = useState<{
+    roomId: string
+  } | null>(null)
+
+  // Preview line for split drawing
+  const splitLineRef = useRef<THREE.Line | null>(null)
+
   // Use refs so the click handler always sees the latest values without
   // needing to be recreated (which would tear down and reinit the scene).
   const editModeRef = useRef(editMode)
   editModeRef.current = editMode
   const onCorrectionRef = useRef(onCorrection)
   onCorrectionRef.current = onCorrection
+  const splitStateRef = useRef(splitState)
+  splitStateRef.current = splitState
+  const mergeStateRef = useRef(mergeState)
+  mergeStateRef.current = mergeState
+  const modelRef = useRef(model)
+  modelRef.current = model
 
   const animate = useCallback(() => {
     frameIdRef.current = requestAnimationFrame(animate)
     controlsRef.current?.update()
     if (rendererRef.current && sceneRef.current && cameraRef.current) {
       rendererRef.current.render(sceneRef.current, cameraRef.current)
+    }
+  }, [])
+
+  const clearSplitPreview = useCallback(() => {
+    const scene = sceneRef.current
+    if (scene && splitLineRef.current) {
+      scene.remove(splitLineRef.current)
+      splitLineRef.current.geometry.dispose()
+      ;(splitLineRef.current.material as THREE.Material).dispose()
+      splitLineRef.current = null
     }
   }, [])
 
@@ -547,6 +575,70 @@ export function WireframeViewer({
     if (highlightedRef.current) {
       setWireframeColor(highlightedRef.current.wireframe, highlightedRef.current.originalColor)
       highlightedRef.current = null
+    }
+
+    // --- Split mode: place split line points ---
+    if (splitStateRef.current && editModeRef.current) {
+      const ss = splitStateRef.current
+      const room = modelRef.current.rooms.find((r) => r.id === ss.roomId)
+      if (!room) {
+        setSplitState(null)
+        return
+      }
+      const floorY =
+        room.floor.boundary.length > 0
+          ? room.floor.boundary.reduce((s, p) => s + p.y, 0) /
+            room.floor.boundary.length
+          : 0
+
+      // Cast ray to floor plane
+      const origin = raycaster.ray.origin
+      const dir = raycaster.ray.direction
+      if (Math.abs(dir.y) < 1e-6) return
+      const t = (floorY - origin.y) / dir.y
+      if (t < 0) return
+      const point: Point3D = {
+        x: origin.x + dir.x * t,
+        y: floorY,
+        z: origin.z + dir.z * t,
+      }
+
+      if (!ss.startPoint) {
+        // First click — set start
+        setSplitState({ ...ss, startPoint: point })
+      } else {
+        // Second click — dispatch split and exit split mode
+        onCorrectionRef.current?.({
+          type: 'splitRoom',
+          roomId: ss.roomId,
+          splitStart: ss.startPoint,
+          splitEnd: point,
+        })
+        setSplitState(null)
+        clearSplitPreview()
+      }
+      return
+    }
+
+    // --- Merge mode: click second room ---
+    if (mergeStateRef.current && editModeRef.current) {
+      const ms = mergeStateRef.current
+      // Find room hit
+      const roomHit = intersects.find(
+        (i) => i.object.userData.elementType === 'room',
+      )
+      if (roomHit) {
+        const targetRoom = roomHit.object.userData.room as Room
+        if (targetRoom.id !== ms.roomId) {
+          onCorrectionRef.current?.({
+            type: 'mergeRooms',
+            roomIdA: ms.roomId,
+            roomIdB: targetRoom.id,
+          })
+        }
+      }
+      setMergeState(null)
+      return
     }
 
     if (intersects.length === 0) {
@@ -593,6 +685,17 @@ export function WireframeViewer({
             type: 'window',
             roomId: data.roomId,
             windowId: data.window.id,
+          },
+        })
+      } else if (data.elementType === 'room') {
+        const room = data.room as Room
+        setPopup({
+          x: Math.min(screenX, rect.width - 160),
+          y: Math.min(screenY, rect.height - 150),
+          target: {
+            type: 'room',
+            roomId: room.id,
+            roomName: room.name,
           },
         })
       } else {
@@ -647,7 +750,7 @@ export function WireframeViewer({
         })
         break
     }
-  }, [])
+  }, [clearSplitPreview])
 
   // Initialize Three.js scene once
   useEffect(() => {
@@ -688,6 +791,59 @@ export function WireframeViewer({
     // Click handler for raycasting
     renderer.domElement.addEventListener('click', handleClick)
 
+    // Mousemove handler for split line preview
+    const handleMouseMove = (event: MouseEvent) => {
+      const ss = splitStateRef.current
+      if (!ss?.startPoint) return
+      const room = modelRef.current.rooms.find((r) => r.id === ss.roomId)
+      if (!room) return
+      const floorY =
+        room.floor.boundary.length > 0
+          ? room.floor.boundary.reduce((s, p) => s + p.y, 0) /
+            room.floor.boundary.length
+          : 0
+
+      const r = container.getBoundingClientRect()
+      const mx = new THREE.Vector2(
+        ((event.clientX - r.left) / r.width) * 2 - 1,
+        -((event.clientY - r.top) / r.height) * 2 + 1,
+      )
+      const rc = new THREE.Raycaster()
+      rc.setFromCamera(mx, camera)
+      const o = rc.ray.origin
+      const d = rc.ray.direction
+      if (Math.abs(d.y) < 1e-6) return
+      const t = (floorY - o.y) / d.y
+      if (t < 0) return
+      const endPt: Point3D = {
+        x: o.x + d.x * t,
+        y: floorY,
+        z: o.z + d.z * t,
+      }
+
+      // Update preview line in scene
+      if (splitLineRef.current) {
+        scene.remove(splitLineRef.current)
+        splitLineRef.current.geometry.dispose()
+        ;(splitLineRef.current.material as THREE.Material).dispose()
+        splitLineRef.current = null
+      }
+      const geom = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(ss.startPoint.x, ss.startPoint.y, ss.startPoint.z),
+        new THREE.Vector3(endPt.x, endPt.y, endPt.z),
+      ])
+      const mat = new THREE.LineDashedMaterial({
+        color: 0xff4444,
+        dashSize: 0.15,
+        gapSize: 0.1,
+      })
+      const line = new THREE.Line(geom, mat)
+      line.computeLineDistances()
+      scene.add(line)
+      splitLineRef.current = line
+    }
+    renderer.domElement.addEventListener('mousemove', handleMouseMove)
+
     // Start render loop
     animate()
 
@@ -705,6 +861,7 @@ export function WireframeViewer({
     return () => {
       window.removeEventListener('resize', onResize)
       renderer.domElement.removeEventListener('click', handleClick)
+      renderer.domElement.removeEventListener('mousemove', handleMouseMove)
       cancelAnimationFrame(frameIdRef.current)
       controls.dispose()
       renderer.dispose()
@@ -799,12 +956,15 @@ export function WireframeViewer({
           highlightedRef.current = null
         }
       } else {
-        // Leaving edit mode: clear popup
+        // Leaving edit mode: clear popup and split/merge state
         setPopup(null)
+        setSplitState(null)
+        setMergeState(null)
+        clearSplitPreview()
       }
       return next
     })
-  }, [])
+  }, [clearSplitPreview])
 
   const handleCorrectionAction = useCallback(
     (action: CorrectionAction) => {
@@ -812,6 +972,19 @@ export function WireframeViewer({
     },
     [onCorrection],
   )
+
+  const handleStartSplit = useCallback((roomId: string) => {
+    setSplitState({ roomId })
+    setMergeState(null)
+    setPopup(null)
+  }, [])
+
+  const handleStartMerge = useCallback((roomId: string) => {
+    setMergeState({ roomId })
+    setSplitState(null)
+    clearSplitPreview()
+    setPopup(null)
+  }, [clearSplitPreview])
 
   const unit = model.isCalibrated ? model.unit : undefined
 
@@ -868,8 +1041,56 @@ export function WireframeViewer({
           y={popup.y}
           target={popup.target}
           onAction={handleCorrectionAction}
+          onStartSplit={handleStartSplit}
+          onStartMerge={handleStartMerge}
           onClose={() => setPopup(null)}
         />
+      )}
+
+      {/* Split / merge mode indicators */}
+      {splitState && (
+        <div
+          data-testid="split-mode-indicator"
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(255, 68, 68, 0.9)',
+            color: '#fff',
+            padding: '6px 16px',
+            borderRadius: 6,
+            fontSize: 13,
+            fontFamily: 'system-ui, sans-serif',
+            zIndex: 10,
+            pointerEvents: 'none',
+          }}
+        >
+          {splitState.startPoint
+            ? 'Click to set split end point'
+            : 'Click to set split start point'}
+        </div>
+      )}
+      {mergeState && (
+        <div
+          data-testid="merge-mode-indicator"
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(0, 170, 136, 0.9)',
+            color: '#fff',
+            padding: '6px 16px',
+            borderRadius: 6,
+            fontSize: 13,
+            fontFamily: 'system-ui, sans-serif',
+            zIndex: 10,
+            pointerEvents: 'none',
+          }}
+        >
+          Click another room to merge
+        </div>
       )}
 
       {/* Detail panel (normal mode) */}

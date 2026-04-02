@@ -215,6 +215,78 @@ describe('CorrectionPopup', () => {
     expect(onAction).not.toHaveBeenCalled()
   })
 
+  // --- Room target ---
+
+  it('shows "Split Room" and "Merge with Adjacent" buttons for a room target', () => {
+    const onAction = vi.fn()
+    const onClose = vi.fn()
+    const target: CorrectionTarget = {
+      type: 'room',
+      roomId: 'room-0',
+      roomName: 'Lounge',
+    }
+    render(
+      <CorrectionPopup x={0} y={0} target={target} onAction={onAction} onClose={onClose} />,
+    )
+    expect(screen.getByTestId('split-room-btn')).toBeInTheDocument()
+    expect(screen.getByTestId('merge-room-btn')).toBeInTheDocument()
+    expect(screen.queryByTestId('add-door-btn')).not.toBeInTheDocument()
+  })
+
+  it('calls onStartSplit and closes when "Split Room" is clicked', () => {
+    const onAction = vi.fn()
+    const onClose = vi.fn()
+    const onStartSplit = vi.fn()
+    const target: CorrectionTarget = {
+      type: 'room',
+      roomId: 'room-0',
+      roomName: 'Lounge',
+    }
+    render(
+      <CorrectionPopup
+        x={0}
+        y={0}
+        target={target}
+        onAction={onAction}
+        onStartSplit={onStartSplit}
+        onClose={onClose}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('split-room-btn'))
+
+    expect(onStartSplit).toHaveBeenCalledWith('room-0')
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onAction).not.toHaveBeenCalled()
+  })
+
+  it('calls onStartMerge and closes when "Merge with Adjacent" is clicked', () => {
+    const onAction = vi.fn()
+    const onClose = vi.fn()
+    const onStartMerge = vi.fn()
+    const target: CorrectionTarget = {
+      type: 'room',
+      roomId: 'room-0',
+      roomName: 'Lounge',
+    }
+    render(
+      <CorrectionPopup
+        x={0}
+        y={0}
+        target={target}
+        onAction={onAction}
+        onStartMerge={onStartMerge}
+        onClose={onClose}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('merge-room-btn'))
+
+    expect(onStartMerge).toHaveBeenCalledWith('room-0')
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onAction).not.toHaveBeenCalled()
+  })
+
   // --- Positioning ---
 
   it('positions the popup at the given x, y coordinates', () => {

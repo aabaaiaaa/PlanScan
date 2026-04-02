@@ -170,6 +170,133 @@ describe('useBuildingModel', () => {
     expect(result.current.model!.rooms[0].name).toBe('Renamed Room')
   })
 
+  it('splits a room into two', () => {
+    const { result } = renderHook(() => useBuildingModel(), { wrapper })
+
+    // Create a model with a room that has a proper floor boundary
+    const modelWithFloor: BuildingModel = {
+      ...sampleModel,
+      rooms: [
+        {
+          ...sampleModel.rooms[0],
+          floor: {
+            ...sampleModel.rooms[0].floor,
+            boundary: [
+              { x: 0, y: 0, z: 0 },
+              { x: 4, y: 0, z: 0 },
+              { x: 4, y: 0, z: 6 },
+              { x: 0, y: 0, z: 6 },
+            ],
+          },
+          ceiling: {
+            ...sampleModel.rooms[0].ceiling,
+            boundary: [
+              { x: 0, y: 2.5, z: 0 },
+              { x: 4, y: 2.5, z: 0 },
+              { x: 4, y: 2.5, z: 6 },
+              { x: 0, y: 2.5, z: 6 },
+            ],
+          },
+        },
+      ],
+    }
+
+    act(() => {
+      result.current.dispatch({ type: 'SET_MODEL', model: modelWithFloor })
+    })
+    expect(result.current.model!.rooms).toHaveLength(1)
+
+    act(() => {
+      result.current.dispatch({
+        type: 'SPLIT_ROOM',
+        roomId: 'room-1',
+        splitStart: { x: 0, y: 0, z: 3 },
+        splitEnd: { x: 4, y: 0, z: 3 },
+      })
+    })
+
+    expect(result.current.model!.rooms).toHaveLength(2)
+    expect(result.current.model!.rooms[0].name).toContain('Lounge')
+    expect(result.current.model!.rooms[1].name).toContain('Lounge')
+  })
+
+  it('merges two rooms into one', () => {
+    const { result } = renderHook(() => useBuildingModel(), { wrapper })
+
+    // Create a model with a splittable room
+    const modelWithFloor: BuildingModel = {
+      ...sampleModel,
+      rooms: [
+        {
+          ...sampleModel.rooms[0],
+          floor: {
+            ...sampleModel.rooms[0].floor,
+            boundary: [
+              { x: 0, y: 0, z: 0 },
+              { x: 4, y: 0, z: 0 },
+              { x: 4, y: 0, z: 6 },
+              { x: 0, y: 0, z: 6 },
+            ],
+          },
+          ceiling: {
+            ...sampleModel.rooms[0].ceiling,
+            boundary: [
+              { x: 0, y: 2.5, z: 0 },
+              { x: 4, y: 2.5, z: 0 },
+              { x: 4, y: 2.5, z: 6 },
+              { x: 0, y: 2.5, z: 6 },
+            ],
+          },
+        },
+      ],
+    }
+
+    act(() => {
+      result.current.dispatch({ type: 'SET_MODEL', model: modelWithFloor })
+    })
+
+    // Split
+    act(() => {
+      result.current.dispatch({
+        type: 'SPLIT_ROOM',
+        roomId: 'room-1',
+        splitStart: { x: 0, y: 0, z: 3 },
+        splitEnd: { x: 4, y: 0, z: 3 },
+      })
+    })
+    expect(result.current.model!.rooms).toHaveLength(2)
+
+    const roomIdA = result.current.model!.rooms[0].id
+    const roomIdB = result.current.model!.rooms[1].id
+
+    // Merge
+    act(() => {
+      result.current.dispatch({
+        type: 'MERGE_ROOMS',
+        roomIdA,
+        roomIdB,
+      })
+    })
+    expect(result.current.model!.rooms).toHaveLength(1)
+  })
+
+  it('ignores SPLIT_ROOM when room not found', () => {
+    const { result } = renderHook(() => useBuildingModel(), { wrapper })
+    act(() => {
+      result.current.dispatch({ type: 'SET_MODEL', model: sampleModel })
+    })
+
+    act(() => {
+      result.current.dispatch({
+        type: 'SPLIT_ROOM',
+        roomId: 'nonexistent',
+        splitStart: { x: 0, y: 0, z: 3 },
+        splitEnd: { x: 4, y: 0, z: 3 },
+      })
+    })
+    expect(result.current.model!.rooms).toHaveLength(1)
+  })
+
   it('throws when used outside provider', () => {
     expect(() => {
       renderHook(() => useBuildingModel())

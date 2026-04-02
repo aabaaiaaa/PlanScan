@@ -2,9 +2,9 @@
 
 ## Summary
 - **Total Tasks**: 20
-- **Completed**: 16
-- **Remaining**: 4
-- **Last Updated**: 2026-04-02T01:51:52.548Z
+- **Completed**: 17
+- **Remaining**: 3
+- **Last Updated**: 2026-04-02T02:09:32.034Z
 
 ## Iteration Log
 
@@ -151,4 +151,13 @@
 - **Exit Status**: success
 - **Tokens**: 2,871,693 total (9,607 in, 64,626 out, 108,216 cache-create, 2,689,244 cache-read)
 - **Cost**: $3.8218
+
+### Iteration 17 - 2026-04-02T01:51:57.072Z
+- **Task Attempted**: TASK-017
+- **Task Completed**: TASK-017
+- **Summary**: Completed Manual room boundary adjustment
+- **Duration**: 17m 35s
+- **Exit Status**: success
+- **Tokens**: 5,579,090 total (2,567 in, 58,364 out, 125,314 cache-create, 5,392,845 cache-read)
+- **Cost**: $5.1183
 

@@ -101,7 +101,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: User can add a door to a wall by clicking and selecting "door". The door appears in both the 3D and 2D views. Removing a door updates both views. Measurements recalculate after changes.
 
 ### TASK-017: Manual room boundary adjustment
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-012, TASK-014
 - **Description**: Allow the user to adjust room boundaries if the automatic segmentation from doorway tags is incorrect. The user can split a room into two by drawing a dividing line, or merge two adjacent rooms. The model, measurements, and both views update accordingly. See requirements F9.
 - **Verification**: User can split a room and see two separate rooms with individual measurements. User can merge two rooms back. Both 3D and 2D views reflect the changes.

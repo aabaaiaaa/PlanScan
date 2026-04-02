@@ -183,10 +183,31 @@ type HitResult =
   | { type: 'door'; door: Door; roomId: string }
   | { type: 'window'; window: WindowType; roomId: string }
   | { type: 'wall'; wall: Wall; roomId: string; worldPosition: Point3D }
+  | { type: 'room'; room: Room }
+
+/** Point-in-polygon test using ray casting (2D) */
+function pointInPolygon2D(
+  px: number,
+  py: number,
+  polygon: { x: number; y: number }[],
+): boolean {
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y
+    const xj = polygon[j].x, yj = polygon[j].y
+    if (
+      yi > py !== yj > py &&
+      px < ((xj - xi) * (py - yi)) / (yj - yi) + xi
+    ) {
+      inside = !inside
+    }
+  }
+  return inside
+}
 
 /**
  * Perform hit testing on the 2D floor plan canvas.
- * Priority: doors > windows > walls (drawn top to bottom).
+ * Priority: doors > windows > walls > rooms (drawn top to bottom).
  */
 function hitTest2D(
   cssX: number,
@@ -241,6 +262,17 @@ function hitTest2D(
     const floorY = Math.min(bestWall.corners[0].y, bestWall.corners[1].y)
     const worldPosition: Point3D = { x: worldXZ.x, y: floorY, z: worldXZ.y }
     return { type: 'wall', wall: bestWall, roomId: bestRoomId, worldPosition }
+  }
+
+  // 4. Check if click is inside a room floor boundary
+  for (const room of rooms) {
+    if (room.floor.boundary.length < 3) continue
+    const canvasPoly = room.floor.boundary.map((p) =>
+      toCanvas(projectToFloorPlan(p), vt),
+    )
+    if (pointInPolygon2D(cssX, cssY, canvasPoly)) {
+      return { type: 'room', room }
+    }
   }
 
   return null
@@ -568,6 +600,17 @@ export function FloorPlanViewer({
   const [editMode, setEditMode] = useState(false)
   const [popup, setPopup] = useState<{ x: number; y: number; target: CorrectionTarget } | null>(null)
 
+  // Split/merge interaction state
+  const [splitState, setSplitState] = useState<{
+    roomId: string
+    startPoint?: { x: number; y: number } // canvas coordinates
+    startWorld?: Point3D // world coordinates
+  } | null>(null)
+  const [mergeState, setMergeState] = useState<{
+    roomId: string
+  } | null>(null)
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null)
+
   // Store current rooms and viewport for click handler
   const viewportRef = useRef<ViewportTransform>({ scale: 1, offsetX: 0, offsetY: 0 })
   const roomsForFloorRef = useRef<Room[]>([])
@@ -605,9 +648,52 @@ export function FloorPlanViewer({
       const rect = canvas.getBoundingClientRect()
       const cssX = event.clientX - rect.left
       const cssY = event.clientY - rect.top
-
-      const rooms = roomsForFloorRef.current
       const vt = viewportRef.current
+      const rooms = roomsForFloorRef.current
+
+      // --- Split mode: place split line points ---
+      if (splitState) {
+        const worldXZ = fromCanvas({ x: cssX, y: cssY }, vt)
+        const room = rooms.find((r) => r.id === splitState.roomId)
+        const floorY =
+          room && room.floor.boundary.length > 0
+            ? room.floor.boundary.reduce((s, p) => s + p.y, 0) /
+              room.floor.boundary.length
+            : 0
+
+        if (!splitState.startPoint) {
+          // First click — set start
+          setSplitState({
+            ...splitState,
+            startPoint: { x: cssX, y: cssY },
+            startWorld: { x: worldXZ.x, y: floorY, z: worldXZ.y },
+          })
+        } else if (splitState.startWorld) {
+          // Second click — dispatch split
+          onCorrection({
+            type: 'splitRoom',
+            roomId: splitState.roomId,
+            splitStart: splitState.startWorld,
+            splitEnd: { x: worldXZ.x, y: floorY, z: worldXZ.y },
+          })
+          setSplitState(null)
+        }
+        return
+      }
+
+      // --- Merge mode: click second room ---
+      if (mergeState) {
+        const hitResult = hitTest2D(cssX, cssY, rooms, vt)
+        if (hitResult?.type === 'room' && hitResult.room.id !== mergeState.roomId) {
+          onCorrection({
+            type: 'mergeRooms',
+            roomIdA: mergeState.roomId,
+            roomIdB: hitResult.room.id,
+          })
+        }
+        setMergeState(null)
+        return
+      }
 
       const hitResult = hitTest2D(cssX, cssY, rooms, vt)
 
@@ -655,9 +741,19 @@ export function FloorPlanViewer({
             windowId: hitResult.window.id,
           },
         })
+      } else if (hitResult.type === 'room') {
+        setPopup({
+          x: popupX,
+          y: popupY,
+          target: {
+            type: 'room',
+            roomId: hitResult.room.id,
+            roomName: hitResult.room.name,
+          },
+        })
       }
     },
-    [editMode, onCorrection],
+    [editMode, onCorrection, splitState, mergeState],
   )
 
   // Render the floor plan whenever model or floor level changes
@@ -730,13 +826,67 @@ export function FloorPlanViewer({
     return () => window.removeEventListener('resize', onResize)
   }, [model, selectedFloor, getRoomsForFloor, unit])
 
+  // Mousemove handler for split line preview
+  const handleCanvasMouseMove = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!splitState?.startPoint) return
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      setMousePos({ x: event.clientX - rect.left, y: event.clientY - rect.top })
+    },
+    [splitState],
+  )
+
+  // Draw split preview line overlay
+  useEffect(() => {
+    if (!splitState?.startPoint || !mousePos) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // Redraw the floor plan first, then overlay the preview line
+    const container = containerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    const dpr = window.devicePixelRatio || 1
+    const w = rect.width || 800
+    const h = rect.height || 500
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+    const rooms = roomsForFloorRef.current
+    renderFloorPlan(ctx, w, h, rooms, unit)
+
+    // Draw the preview line
+    ctx.save()
+    ctx.strokeStyle = '#ff4444'
+    ctx.lineWidth = 2
+    ctx.setLineDash([6, 4])
+    ctx.beginPath()
+    ctx.moveTo(splitState.startPoint.x, splitState.startPoint.y)
+    ctx.lineTo(mousePos.x, mousePos.y)
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    // Draw start point marker
+    ctx.fillStyle = '#ff4444'
+    ctx.beginPath()
+    ctx.arc(splitState.startPoint.x, splitState.startPoint.y, 4, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }, [splitState, mousePos, unit])
+
   const handleToggleEditMode = useCallback(() => {
     setEditMode((prev) => {
       if (!prev) {
         // Entering edit mode
       } else {
-        // Leaving edit mode: clear popup
+        // Leaving edit mode: clear popup and split/merge state
         setPopup(null)
+        setSplitState(null)
+        setMergeState(null)
+        setMousePos(null)
       }
       return !prev
     })
@@ -748,6 +898,19 @@ export function FloorPlanViewer({
     },
     [onCorrection],
   )
+
+  const handleStartSplit = useCallback((roomId: string) => {
+    setSplitState({ roomId })
+    setMergeState(null)
+    setPopup(null)
+  }, [])
+
+  const handleStartMerge = useCallback((roomId: string) => {
+    setMergeState({ roomId })
+    setSplitState(null)
+    setMousePos(null)
+    setPopup(null)
+  }, [])
 
   return (
     <div
@@ -765,11 +928,12 @@ export function FloorPlanViewer({
         ref={canvasRef}
         data-testid="floor-plan-canvas"
         onClick={handleCanvasClick}
+        onMouseMove={handleCanvasMouseMove}
         style={{
           display: 'block',
           width: '100%',
           height: '100%',
-          cursor: editMode ? 'crosshair' : 'default',
+          cursor: splitState || mergeState ? 'crosshair' : editMode ? 'crosshair' : 'default',
         }}
       />
 
@@ -806,8 +970,56 @@ export function FloorPlanViewer({
           y={popup.y}
           target={popup.target}
           onAction={handleCorrectionAction}
+          onStartSplit={handleStartSplit}
+          onStartMerge={handleStartMerge}
           onClose={() => setPopup(null)}
         />
+      )}
+
+      {/* Split / merge mode indicators */}
+      {splitState && (
+        <div
+          data-testid="split-mode-indicator-2d"
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(255, 68, 68, 0.9)',
+            color: '#fff',
+            padding: '6px 16px',
+            borderRadius: 6,
+            fontSize: 13,
+            fontFamily: 'system-ui, sans-serif',
+            zIndex: 10,
+            pointerEvents: 'none',
+          }}
+        >
+          {splitState.startPoint
+            ? 'Click to set split end point'
+            : 'Click to set split start point'}
+        </div>
+      )}
+      {mergeState && (
+        <div
+          data-testid="merge-mode-indicator-2d"
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(0, 170, 136, 0.9)',
+            color: '#fff',
+            padding: '6px 16px',
+            borderRadius: 6,
+            fontSize: 13,
+            fontFamily: 'system-ui, sans-serif',
+            zIndex: 10,
+            pointerEvents: 'none',
+          }}
+        >
+          Click another room to merge
+        </div>
       )}
 
       {showFloorSwitcher && (

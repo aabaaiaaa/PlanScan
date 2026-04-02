@@ -10,17 +10,22 @@ export type CorrectionAction =
   | { type: 'addWindow'; roomId: string; wall: Wall; clickPosition: Point3D }
   | { type: 'removeDoor'; roomId: string; doorId: string }
   | { type: 'removeWindow'; roomId: string; windowId: string }
+  | { type: 'splitRoom'; roomId: string; splitStart: Point3D; splitEnd: Point3D }
+  | { type: 'mergeRooms'; roomIdA: string; roomIdB: string }
 
 export type CorrectionTarget =
   | { type: 'wall'; roomId: string; wall: Wall; clickPosition: Point3D }
   | { type: 'door'; roomId: string; doorId: string }
   | { type: 'window'; roomId: string; windowId: string }
+  | { type: 'room'; roomId: string; roomName: string }
 
 export interface CorrectionPopupProps {
   x: number
   y: number
   target: CorrectionTarget
   onAction: (action: CorrectionAction) => void
+  onStartSplit?: (roomId: string) => void
+  onStartMerge?: (roomId: string) => void
   onClose: () => void
 }
 
@@ -46,7 +51,7 @@ const popupButtonStyle: React.CSSProperties = {
 // Component
 // ---------------------------------------------------------------------------
 
-export function CorrectionPopup({ x, y, target, onAction, onClose }: CorrectionPopupProps) {
+export function CorrectionPopup({ x, y, target, onAction, onStartSplit, onStartMerge, onClose }: CorrectionPopupProps) {
   return (
     <div
       data-testid="correction-popup"
@@ -143,6 +148,41 @@ export function CorrectionPopup({ x, y, target, onAction, onClose }: CorrectionP
         >
           Remove Window
         </button>
+      )}
+      {target.type === 'room' && (
+        <>
+          <div
+            style={{
+              padding: '4px 8px',
+              color: '#aaa',
+              fontSize: 11,
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+              marginBottom: 4,
+            }}
+          >
+            {target.roomName}
+          </div>
+          <button
+            data-testid="split-room-btn"
+            onClick={() => {
+              onStartSplit?.(target.roomId)
+              onClose()
+            }}
+            style={popupButtonStyle}
+          >
+            Split Room
+          </button>
+          <button
+            data-testid="merge-room-btn"
+            onClick={() => {
+              onStartMerge?.(target.roomId)
+              onClose()
+            }}
+            style={popupButtonStyle}
+          >
+            Merge with Adjacent
+          </button>
+        </>
       )}
       <button
         data-testid="correction-cancel-btn"

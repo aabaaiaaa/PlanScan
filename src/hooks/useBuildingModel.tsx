@@ -5,6 +5,9 @@ import {
   type ReactNode,
 } from 'react'
 import type { BuildingModel, Door, Room, Window } from '../types'
+import type { Point3D } from '../types'
+import { splitRoom, mergeRooms } from '../utils/roomBoundaryAdjustment'
+import { recalculateMeasurements } from '../utils/measurementCalculation'
 
 // --- Actions ---
 
@@ -16,6 +19,8 @@ type BuildingModelAction =
   | { type: 'ADD_WINDOW'; roomId: string; window: Window }
   | { type: 'REMOVE_WINDOW'; roomId: string; windowId: string }
   | { type: 'UPDATE_ROOM'; room: Room }
+  | { type: 'SPLIT_ROOM'; roomId: string; splitStart: Point3D; splitEnd: Point3D }
+  | { type: 'MERGE_ROOMS'; roomIdA: string; roomIdB: string }
 
 // --- Reducer ---
 
@@ -79,6 +84,32 @@ function buildingModelReducer(
         r.id === action.room.id ? action.room : r,
       )
       return { ...state, rooms }
+    }
+
+    case 'SPLIT_ROOM': {
+      if (!state) return state
+      const room = state.rooms.find((r) => r.id === action.roomId)
+      if (!room) return state
+      const result = splitRoom(room, action.splitStart, action.splitEnd)
+      if (!result) return state
+      const [roomA, roomB] = result
+      const rooms = state.rooms.flatMap((r) =>
+        r.id === action.roomId ? [roomA, roomB] : [r],
+      )
+      return recalculateMeasurements({ ...state, rooms })
+    }
+
+    case 'MERGE_ROOMS': {
+      if (!state) return state
+      const roomA = state.rooms.find((r) => r.id === action.roomIdA)
+      const roomB = state.rooms.find((r) => r.id === action.roomIdB)
+      if (!roomA || !roomB) return state
+      const merged = mergeRooms(roomA, roomB)
+      const rooms = state.rooms.filter(
+        (r) => r.id !== action.roomIdA && r.id !== action.roomIdB,
+      )
+      rooms.push(merged)
+      return recalculateMeasurements({ ...state, rooms })
     }
   }
 }
