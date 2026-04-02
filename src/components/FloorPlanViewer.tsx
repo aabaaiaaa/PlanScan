@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import type { BuildingModel, Room, Wall, Door, Window as WindowType } from '../types'
 import type { Point3D } from '../types'
 import {
@@ -432,20 +432,42 @@ function formatLength(value: number, unit?: string): string {
 
 export interface FloorPlanViewerProps {
   model: BuildingModel
-  /** The floor level to display (0-based). Defaults to 0. */
+  /** The initial floor level to display (0-based). Defaults to 0. */
   floorLevel?: number
+  /** Called when the user selects a different floor via the switcher. */
+  onFloorChange?: (level: number) => void
   width?: number | string
   height?: number | string
+}
+
+/** Labels for floor levels */
+function getFloorLabel(level: number): string {
+  if (level === 0) return 'Ground'
+  return `Floor ${level}`
 }
 
 export function FloorPlanViewer({
   model,
   floorLevel = 0,
+  onFloorChange,
   width = '100%',
   height = 500,
 }: FloorPlanViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [selectedFloor, setSelectedFloor] = useState(floorLevel)
+
+  // Sync internal state if the prop changes externally
+  useEffect(() => {
+    setSelectedFloor(floorLevel)
+  }, [floorLevel])
+
+  const handleFloorSelect = (level: number) => {
+    setSelectedFloor(level)
+    onFloorChange?.(level)
+  }
+
+  const showFloorSwitcher = model.floorLevels > 1
 
   // Filter rooms for the selected floor level
   const getRoomsForFloor = useCallback(
@@ -478,9 +500,9 @@ export function FloorPlanViewer({
     canvas.style.height = `${h}px`
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    const rooms = getRoomsForFloor(floorLevel)
+    const rooms = getRoomsForFloor(selectedFloor)
     renderFloorPlan(ctx, w, h, rooms, unit)
-  }, [model, floorLevel, getRoomsForFloor, unit])
+  }, [model, selectedFloor, getRoomsForFloor, unit])
 
   // Re-render on resize
   useEffect(() => {
@@ -503,13 +525,13 @@ export function FloorPlanViewer({
       canvas.style.height = `${h}px`
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-      const rooms = getRoomsForFloor(floorLevel)
+      const rooms = getRoomsForFloor(selectedFloor)
       renderFloorPlan(ctx, w, h, rooms, unit)
     }
 
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [model, floorLevel, getRoomsForFloor, unit])
+  }, [model, selectedFloor, getRoomsForFloor, unit])
 
   return (
     <div
@@ -528,6 +550,43 @@ export function FloorPlanViewer({
         data-testid="floor-plan-canvas"
         style={{ display: 'block', width: '100%', height: '100%' }}
       />
+      {showFloorSwitcher && (
+        <div
+          data-testid="floor-switcher"
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            display: 'flex',
+            gap: 4,
+            background: 'rgba(255,255,255,0.9)',
+            borderRadius: 6,
+            padding: 4,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+          }}
+        >
+          {Array.from({ length: model.floorLevels }, (_, i) => (
+            <button
+              key={i}
+              data-testid={`floor-button-${i}`}
+              onClick={() => handleFloorSelect(i)}
+              style={{
+                padding: '4px 10px',
+                fontSize: 12,
+                fontFamily: 'system-ui, sans-serif',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                background: selectedFloor === i ? '#333' : 'transparent',
+                color: selectedFloor === i ? '#fff' : '#333',
+                fontWeight: selectedFloor === i ? 600 : 400,
+              }}
+            >
+              {getFloorLabel(i)}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

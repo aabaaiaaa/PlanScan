@@ -89,7 +89,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Given a reconstructed model, the component renders a 2D floor plan with walls, doors, windows, and measurement labels. Visual inspection confirms standard architectural conventions are followed.
 
 ### TASK-015: Floor switcher for multi-level
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-014
 - **Description**: Add a floor switcher UI to the floor plan viewer. When multiple floor levels exist in the model, display buttons or a dropdown to toggle between floors. The 2D view updates to show the selected floor's layout. Handle the single-floor case (hide the switcher). See requirements F8.
 - **Verification**: With a multi-level model, the floor switcher appears and toggles between floors correctly. With a single-floor model, the switcher is hidden. Component test verifies switcher visibility and floor selection state.

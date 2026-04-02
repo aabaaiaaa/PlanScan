@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import type { BuildingModel, Room, Wall, Door, Window, Staircase } from '../types'
 import type { Point3D } from '../types'
 
@@ -369,5 +369,132 @@ describe('FloorPlanViewer', () => {
     const labelCalls = drawCalls.filter((c) => c.startsWith('fillText('))
     expect(labelCalls.some((c) => c.includes('Room 1'))).toBe(true)
     expect(labelCalls.some((c) => c.includes('Room 2'))).toBe(true)
+  })
+
+  // ---------------------------------------------------------------------------
+  // Floor switcher tests (TASK-015)
+  // ---------------------------------------------------------------------------
+
+  describe('floor switcher', () => {
+    function makeMultiFloorModel() {
+      const room0 = makeRoom({ id: 'room-0', name: 'Ground Floor Room' })
+      const room1 = makeRoom({
+        id: 'room-1',
+        name: 'First Floor Room',
+        floor: {
+          id: 'floor-1',
+          boundary: [
+            makePoint(0, 2.5, 0),
+            makePoint(4, 2.5, 0),
+            makePoint(4, 2.5, 3),
+            makePoint(0, 2.5, 3),
+          ],
+          plane: { normal: makePoint(0, 1, 0), distance: 2.5 },
+          level: 1,
+        },
+      })
+      return makeModel({ rooms: [room0, room1], floorLevels: 2 })
+    }
+
+    it('is hidden when there is only one floor', () => {
+      const singleFloor = makeModel({ floorLevels: 1 })
+      render(<FloorPlanViewer model={singleFloor} />)
+      expect(screen.queryByTestId('floor-switcher')).not.toBeInTheDocument()
+    })
+
+    it('is hidden when floorLevels is 0', () => {
+      const model = makeModel({ rooms: [], floorLevels: 0 })
+      render(<FloorPlanViewer model={model} />)
+      expect(screen.queryByTestId('floor-switcher')).not.toBeInTheDocument()
+    })
+
+    it('is visible when there are multiple floors', () => {
+      render(<FloorPlanViewer model={makeMultiFloorModel()} />)
+      expect(screen.getByTestId('floor-switcher')).toBeInTheDocument()
+    })
+
+    it('renders a button for each floor level', () => {
+      render(<FloorPlanViewer model={makeMultiFloorModel()} />)
+      expect(screen.getByTestId('floor-button-0')).toBeInTheDocument()
+      expect(screen.getByTestId('floor-button-1')).toBeInTheDocument()
+    })
+
+    it('labels floor 0 as "Ground" and floor 1 as "Floor 1"', () => {
+      render(<FloorPlanViewer model={makeMultiFloorModel()} />)
+      expect(screen.getByTestId('floor-button-0').textContent).toBe('Ground')
+      expect(screen.getByTestId('floor-button-1').textContent).toBe('Floor 1')
+    })
+
+    it('highlights the selected floor button', () => {
+      render(<FloorPlanViewer model={makeMultiFloorModel()} />)
+      const btn0 = screen.getByTestId('floor-button-0')
+      const btn1 = screen.getByTestId('floor-button-1')
+      // Default: floor 0 is selected (jsdom normalises #333 to rgb(51, 51, 51))
+      expect(btn0.style.background).toBe('rgb(51, 51, 51)')
+      expect(btn1.style.background).toBe('transparent')
+    })
+
+    it('switches floors when a button is clicked', () => {
+      render(<FloorPlanViewer model={makeMultiFloorModel()} />)
+
+      // Click floor 1 button
+      fireEvent.click(screen.getByTestId('floor-button-1'))
+
+      // Floor 1 button should now be highlighted
+      const btn0 = screen.getByTestId('floor-button-0')
+      const btn1 = screen.getByTestId('floor-button-1')
+      expect(btn1.style.background).toBe('rgb(51, 51, 51)')
+      expect(btn0.style.background).toBe('transparent')
+    })
+
+    it('renders correct rooms after switching floors', () => {
+      render(<FloorPlanViewer model={makeMultiFloorModel()} />)
+
+      // Initially floor 0: should draw Ground Floor Room
+      let labelCalls = drawCalls.filter((c) => c.startsWith('fillText('))
+      expect(labelCalls.some((c) => c.includes('Ground Floor Room'))).toBe(true)
+
+      // Switch to floor 1
+      drawCalls = []
+      fireEvent.click(screen.getByTestId('floor-button-1'))
+
+      labelCalls = drawCalls.filter((c) => c.startsWith('fillText('))
+      expect(labelCalls.some((c) => c.includes('First Floor Room'))).toBe(true)
+      expect(labelCalls.some((c) => c.includes('Ground Floor Room'))).toBe(false)
+    })
+
+    it('calls onFloorChange callback when a floor is selected', () => {
+      const onFloorChange = vi.fn()
+      render(
+        <FloorPlanViewer model={makeMultiFloorModel()} onFloorChange={onFloorChange} />,
+      )
+
+      fireEvent.click(screen.getByTestId('floor-button-1'))
+      expect(onFloorChange).toHaveBeenCalledWith(1)
+
+      fireEvent.click(screen.getByTestId('floor-button-0'))
+      expect(onFloorChange).toHaveBeenCalledWith(0)
+    })
+
+    it('renders three buttons for a three-floor model', () => {
+      const room0 = makeRoom({ id: 'r0', name: 'R0' })
+      const room1 = makeRoom({
+        id: 'r1',
+        name: 'R1',
+        floor: { id: 'f1', boundary: [], plane: { normal: makePoint(0, 1, 0), distance: 2.5 }, level: 1 },
+      })
+      const room2 = makeRoom({
+        id: 'r2',
+        name: 'R2',
+        floor: { id: 'f2', boundary: [], plane: { normal: makePoint(0, 1, 0), distance: 5 }, level: 2 },
+      })
+      const model = makeModel({ rooms: [room0, room1, room2], floorLevels: 3 })
+      render(<FloorPlanViewer model={model} />)
+
+      expect(screen.getByTestId('floor-button-0')).toBeInTheDocument()
+      expect(screen.getByTestId('floor-button-1')).toBeInTheDocument()
+      expect(screen.getByTestId('floor-button-2')).toBeInTheDocument()
+      expect(screen.getByTestId('floor-button-2').textContent).toBe('Floor 2')
+    })
   })
 })
