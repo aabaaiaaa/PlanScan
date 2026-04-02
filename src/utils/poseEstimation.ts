@@ -106,10 +106,8 @@ export function estimateRelativePose(
     pts2Data[i * 2 + 1] = matchedPair.pointsB[i].y
   }
 
-  const pts1 = new cv.Mat()
-  const pts2 = new cv.Mat()
-  Object.assign(pts1, { rows: matchedPair.pointsA.length, cols: 1, data32F: pts1Data })
-  Object.assign(pts2, { rows: matchedPair.pointsB.length, cols: 1, data32F: pts2Data })
+  const pts1 = cv.matFromArray(matchedPair.pointsA.length, 1, cv.CV_32FC2, Array.from(pts1Data))
+  const pts2 = cv.matFromArray(matchedPair.pointsB.length, 1, cv.CV_32FC2, Array.from(pts2Data))
 
   const mask = new cv.Mat()
   let E: CvMat | null = null
@@ -133,6 +131,7 @@ export function estimateRelativePose(
 
     // Extract rotation (3x3 doubles, row-major)
     const rData = R.data64F
+    if (!rData || rData.length < 9) return null
     const rotation: number[] = []
     for (let i = 0; i < 9; i++) {
       rotation.push(rData[i])
@@ -140,6 +139,7 @@ export function estimateRelativePose(
 
     // Extract translation (3x1 doubles)
     const tData = t.data64F
+    if (!tData || tData.length < 3) return null
     const translation: Point3D = { x: tData[0], y: tData[1], z: tData[2] }
 
     return { rotation, translation, inlierCount }
@@ -219,8 +219,7 @@ export function estimateCameraPoses(
 
   // Create camera intrinsics matrix
   const K = estimateCameraIntrinsics(imageWidth, imageHeight)
-  const cameraMat = new cv.Mat()
-  Object.assign(cameraMat, { rows: 3, cols: 3, data64F: new Float64Array(K) })
+  const cameraMat = cv.matFromArray(3, 3, cv.CV_64F, K)
 
   // Compute relative poses for all matched pairs
   const relativePoses = new Map<string, RelativePose>()

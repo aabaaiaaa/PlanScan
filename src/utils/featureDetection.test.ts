@@ -151,6 +151,7 @@ function createMockCv(
       delete: vi.fn(),
     })) as unknown as OpenCV['BFMatcher'],
     matFromImageData: vi.fn(() => makeMockMat()),
+    matFromArray: vi.fn(() => makeMockMat()),
     cvtColor: vi.fn(),
     findFundamentalMat: vi.fn(
       (_p1: CvMat, _p2: CvMat, _method: number, _thresh: number, _conf: number, mask: CvMat) => {

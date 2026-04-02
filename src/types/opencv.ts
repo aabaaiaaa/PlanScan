@@ -75,6 +75,7 @@ export interface OpenCV {
   BFMatcher: new (normType: number, crossCheck: boolean) => CvBFMatcher
 
   matFromImageData(imageData: ImageData): CvMat
+  matFromArray(rows: number, cols: number, type: number, array: number[]): CvMat
   cvtColor(src: CvMat, dst: CvMat, code: number): void
   findFundamentalMat(
     points1: CvMat,

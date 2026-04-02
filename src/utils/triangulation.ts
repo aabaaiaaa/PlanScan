@@ -39,7 +39,7 @@ export function invertCameraIntrinsics(K: number[]): number[] {
   const f = K[0]
   const cx = K[2]
   const cy = K[5]
-  if (f === 0) return [0, 0, 0, 0, 0, 0, 0, 0, 1]
+  if (f === 0) return [1, 0, 0, 0, 1, 0, 0, 0, 1]
   return [1 / f, 0, -cx / f, 0, 1 / f, -cy / f, 0, 0, 1]
 }
 

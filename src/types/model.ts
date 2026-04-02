@@ -1,4 +1,5 @@
 import type { Plane, Point3D } from './geometry'
+import type { MeasurementUnit } from './capture'
 
 /** Measurements for a wall segment */
 export interface WallMeasurements {
@@ -109,7 +110,7 @@ export interface BuildingModel {
   /** Whether the model has been calibrated with a scale reference */
   isCalibrated: boolean
   /** The measurement unit used, if calibrated */
-  unit?: import('./capture').MeasurementUnit
+  unit?: MeasurementUnit
   /** Number of floor levels in the model */
   floorLevels: number
 }

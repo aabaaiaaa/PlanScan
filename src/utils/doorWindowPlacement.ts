@@ -163,10 +163,10 @@ export function estimateWindowDimensions(wall: Wall): {
     wallLength * MAX_OPENING_FRACTION
   )
   const maxWindowHeight = wallHeight - DEFAULT_WINDOW_SILL_HEIGHT
-  const height = Math.min(
+  const height = Math.max(0.1, Math.min(
     DEFAULT_WINDOW_HEIGHT,
     maxWindowHeight > 0 ? maxWindowHeight * 0.8 : wallHeight * 0.4
-  )
+  ))
   const sillHeight = Math.min(DEFAULT_WINDOW_SILL_HEIGHT, wallHeight * 0.35)
 
   return { width, height, sillHeight }

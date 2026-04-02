@@ -73,8 +73,8 @@ export function ReconstructionProgress({
       {/* Error state */}
       {status === 'error' && errors.length > 0 && (
         <div className="reconstruction-progress__errors" data-testid="reconstruction-errors">
-          {errors.map((err, i) => (
-            <div key={i} className="reconstruction-progress__error" data-testid="reconstruction-error">
+          {errors.map((err) => (
+            <div key={err.code} className="reconstruction-progress__error" data-testid="reconstruction-error">
               <p className="reconstruction-progress__error-message">{err.message}</p>
             </div>
           ))}
@@ -93,8 +93,8 @@ export function ReconstructionProgress({
       {/* Warnings (shown in all non-idle states) */}
       {warnings.length > 0 && (
         <div className="reconstruction-progress__warnings" data-testid="reconstruction-warnings">
-          {warnings.map((warn, i) => (
-            <p key={i} className="reconstruction-progress__warning" data-testid="reconstruction-warning">
+          {warnings.map((warn) => (
+            <p key={warn.code} className="reconstruction-progress__warning" data-testid="reconstruction-warning">
               {warn.message}
             </p>
           ))}

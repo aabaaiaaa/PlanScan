@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, Component, type ReactNode } from 'react'
 import { ScanSessionProvider, useScanSession } from './hooks/useScanSession'
 import { BuildingModelProvider, useBuildingModel } from './hooks/useBuildingModel'
 import { useReconstruction } from './hooks/useReconstruction'
@@ -10,6 +10,45 @@ import { FloorPlanViewer } from './components/FloorPlanViewer'
 import type { OpenCV } from './types/opencv'
 import type { CorrectionAction } from './components/CorrectionPopup'
 import './App.css'
+
+// ---------------------------------------------------------------------------
+// Error Boundary
+// ---------------------------------------------------------------------------
+
+interface ErrorBoundaryState {
+  hasError: boolean
+  error: Error | null
+}
+
+class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false, error: null }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 32, textAlign: 'center' }}>
+          <h2>Something went wrong</h2>
+          <p style={{ color: '#888' }}>{this.state.error?.message}</p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            style={{ marginTop: 16, padding: '8px 20px', cursor: 'pointer' }}
+          >
+            Try Again
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+// ---------------------------------------------------------------------------
+// App
+// ---------------------------------------------------------------------------
 
 type AppPhase = 'start' | 'capture' | 'calibrate' | 'reconstruct' | 'view'
 type ViewMode = '3d' | '2d'
@@ -38,7 +77,7 @@ function AppContent() {
     reconstruction.reset()
     sessionDispatch({ type: 'START_SESSION', id: crypto.randomUUID() })
     setPhase('capture')
-  }, [sessionDispatch, modelDispatch, reconstruction])
+  }, [sessionDispatch, modelDispatch, reconstruction.reset])
 
   // End capture and go to calibration
   const handleDoneCapturing = useCallback(() => {
@@ -103,11 +142,10 @@ function AppContent() {
   const handleRetry = useCallback(() => {
     reconstruction.reset()
     setPhase('reconstruct')
-  }, [reconstruction])
+  }, [reconstruction.reset])
 
   // Handle correction actions from viewers
   const handleCorrection = useCallback((action: CorrectionAction) => {
-    if (!model) return
 
     if (action.type === 'addDoor') {
       modelDispatch({
@@ -152,7 +190,7 @@ function AppContent() {
         roomIdB: action.roomIdB,
       })
     }
-  }, [model, modelDispatch])
+  }, [modelDispatch])
 
   const photoCount = session?.photos.length ?? 0
   const currentPhaseIndex = PHASE_ORDER.indexOf(phase)
@@ -161,7 +199,7 @@ function AppContent() {
     <div className="app">
       {/* Header */}
       <header className="app__header">
-        <h1 className="app__title">3D Room Scanner</h1>
+        <h1 className="app__title">PlanScan</h1>
         {phase !== 'start' && (
           <nav className="app__breadcrumbs" data-testid="phase-breadcrumbs">
             {PHASE_ORDER.map((p, i) => (
@@ -339,11 +377,13 @@ function AppContent() {
 
 function App() {
   return (
-    <ScanSessionProvider>
-      <BuildingModelProvider>
-        <AppContent />
-      </BuildingModelProvider>
-    </ScanSessionProvider>
+    <ErrorBoundary>
+      <ScanSessionProvider>
+        <BuildingModelProvider>
+          <AppContent />
+        </BuildingModelProvider>
+      </ScanSessionProvider>
+    </ErrorBoundary>
   )
 }
 

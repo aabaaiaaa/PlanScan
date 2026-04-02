@@ -838,25 +838,31 @@ export function FloorPlanViewer({
     [splitState],
   )
 
-  // Draw split preview line overlay
-  useEffect(() => {
-    if (!splitState?.startPoint || !mousePos) return
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+  // Draw split preview line as an overlay (no full redraw)
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null)
 
-    // Redraw the floor plan first, then overlay the preview line
+  useEffect(() => {
+    const overlay = overlayCanvasRef.current
+    if (!overlay) return
+
     const container = containerRef.current
     if (!container) return
     const rect = container.getBoundingClientRect()
     const dpr = window.devicePixelRatio || 1
     const w = rect.width || 800
     const h = rect.height || 500
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    const rooms = roomsForFloorRef.current
-    renderFloorPlan(ctx, w, h, rooms, unit)
+    overlay.width = w * dpr
+    overlay.height = h * dpr
+    overlay.style.width = `${w}px`
+    overlay.style.height = `${h}px`
+
+    const ctx = overlay.getContext('2d')
+    if (!ctx) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, w, h)
+
+    if (!splitState?.startPoint || !mousePos) return
 
     // Draw the preview line
     ctx.save()
@@ -875,7 +881,7 @@ export function FloorPlanViewer({
     ctx.arc(splitState.startPoint.x, splitState.startPoint.y, 4, 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
-  }, [splitState, mousePos, unit])
+  }, [splitState, mousePos])
 
   const handleToggleEditMode = useCallback(() => {
     setEditMode((prev) => {
@@ -934,6 +940,18 @@ export function FloorPlanViewer({
           width: '100%',
           height: '100%',
           cursor: splitState || mergeState ? 'crosshair' : editMode ? 'crosshair' : 'default',
+        }}
+      />
+      {/* Lightweight overlay canvas for split preview line (avoids full floor plan redraw) */}
+      <canvas
+        ref={overlayCanvasRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
         }}
       />
 

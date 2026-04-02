@@ -77,11 +77,12 @@ export function useReconstruction(): UseReconstructionReturn {
         } else {
           setStatus('error')
         }
-      } catch {
+      } catch (err: unknown) {
+        const detail = err instanceof Error ? err.message : String(err)
         setErrors([
           {
             code: 'RECONSTRUCTION_FAILED',
-            message: 'An unexpected error occurred during reconstruction.',
+            message: `Reconstruction failed: ${detail}`,
           },
         ])
         setStatus('error')

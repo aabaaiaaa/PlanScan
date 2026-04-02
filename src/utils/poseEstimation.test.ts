@@ -95,6 +95,7 @@ function createMockCv(): OpenCV {
     ORB: vi.fn() as unknown as OpenCV['ORB'],
     BFMatcher: vi.fn() as unknown as OpenCV['BFMatcher'],
     matFromImageData: vi.fn(() => makeMockMat()),
+    matFromArray: vi.fn((_rows: number, _cols: number, _type: number, _data: number[]) => makeMockMat()),
     cvtColor: vi.fn(),
     findFundamentalMat: vi.fn(() => makeMockMat()),
     findEssentialMat: vi.fn(
@@ -310,9 +311,10 @@ describe('poseEstimation', () => {
 
       estimateRelativePose(cv, pair, cameraMat)
 
-      // pts1, pts2, mask, R, t = 5 mats created + E mat from findEssentialMat
+      // mask, R, t = 3 mats created via new cv.Mat() + E mat from findEssentialMat
+      // pts1, pts2 are now created via matFromArray (not tracked by this spy)
       const deleteCallCount = deleteFns.filter((fn) => fn.mock.calls.length > 0).length
-      expect(deleteCallCount).toBeGreaterThanOrEqual(5)
+      expect(deleteCallCount).toBeGreaterThanOrEqual(3)
 
       cv.Mat = origMat
     })

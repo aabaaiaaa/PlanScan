@@ -130,13 +130,10 @@ export function computeConvexHullXZ(points: Point3D[]): Point3D[] {
   let current = startIdx
   do {
     hull.push(current)
-    let next = 0
+    // Initialize next to first index that isn't current
+    let next = current === 0 ? 1 : 0
     for (let i = 0; i < pts.length; i++) {
-      if (i === current) continue
-      if (next === current) {
-        next = i
-        continue
-      }
+      if (i === current || i === next) continue
 
       const cross =
         (pts[i].x - pts[current].x) * (pts[next].z - pts[current].z) -
@@ -185,7 +182,7 @@ function wallsOverlap(a: Wall, b: Wall, threshold = 0.15): boolean {
   return Math.sqrt(dx * dx + dy * dy + dz * dz) < threshold
 }
 
-/** Remove overlapping wall pairs from a list */
+/** Remove overlapping wall pairs from a list, keeping the longer wall of each pair */
 function removeOverlappingWalls(walls: Wall[]): Wall[] {
   const removed = new Set<number>()
   for (let i = 0; i < walls.length; i++) {
@@ -193,8 +190,12 @@ function removeOverlappingWalls(walls: Wall[]): Wall[] {
     for (let j = i + 1; j < walls.length; j++) {
       if (removed.has(j)) continue
       if (wallsOverlap(walls[i], walls[j])) {
-        removed.add(i)
-        removed.add(j)
+        // Keep the longer wall, remove the shorter one
+        if (walls[i].measurements.length >= walls[j].measurements.length) {
+          removed.add(j)
+        } else {
+          removed.add(i)
+        }
       }
     }
   }

@@ -808,7 +808,7 @@ export function WireframeViewer({
         ((event.clientX - r.left) / r.width) * 2 - 1,
         -((event.clientY - r.top) / r.height) * 2 + 1,
       )
-      const rc = new THREE.Raycaster()
+      const rc = raycasterRef.current
       rc.setFromCamera(mx, camera)
       const o = rc.ray.origin
       const d = rc.ray.direction
@@ -821,26 +821,32 @@ export function WireframeViewer({
         z: o.z + d.z * t,
       }
 
-      // Update preview line in scene
+      // Update preview line in scene — reuse existing line object when possible
       if (splitLineRef.current) {
-        scene.remove(splitLineRef.current)
-        splitLineRef.current.geometry.dispose()
-        ;(splitLineRef.current.material as THREE.Material).dispose()
-        splitLineRef.current = null
+        const positions = new Float32Array([
+          ss.startPoint.x, ss.startPoint.y, ss.startPoint.z,
+          endPt.x, endPt.y, endPt.z,
+        ])
+        splitLineRef.current.geometry.setAttribute(
+          'position',
+          new THREE.Float32BufferAttribute(positions, 3),
+        )
+        splitLineRef.current.computeLineDistances()
+      } else {
+        const geom = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(ss.startPoint.x, ss.startPoint.y, ss.startPoint.z),
+          new THREE.Vector3(endPt.x, endPt.y, endPt.z),
+        ])
+        const mat = new THREE.LineDashedMaterial({
+          color: 0xff4444,
+          dashSize: 0.15,
+          gapSize: 0.1,
+        })
+        const line = new THREE.Line(geom, mat)
+        line.computeLineDistances()
+        scene.add(line)
+        splitLineRef.current = line
       }
-      const geom = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(ss.startPoint.x, ss.startPoint.y, ss.startPoint.z),
-        new THREE.Vector3(endPt.x, endPt.y, endPt.z),
-      ])
-      const mat = new THREE.LineDashedMaterial({
-        color: 0xff4444,
-        dashSize: 0.15,
-        gapSize: 0.1,
-      })
-      const line = new THREE.Line(geom, mat)
-      line.computeLineDistances()
-      scene.add(line)
-      splitLineRef.current = line
     }
     renderer.domElement.addEventListener('mousemove', handleMouseMove)
 

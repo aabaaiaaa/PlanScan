@@ -111,7 +111,7 @@ export function detectFeatures(
   return {
     photoIndex,
     keypoints: kpArray,
-    descriptors: kpArray.length > 0 ? descriptors : (() => { descriptors.delete(); return null })(),
+    descriptors: kpArray.length > 0 ? descriptors : (() => { descriptors.delete(); return null; })(),
   }
 }
 
@@ -170,17 +170,15 @@ export function filterWithRANSAC(
     pts2Data[i * 2 + 1] = kpB.y
   }
 
-  const pts1 = new cv.Mat()
-  const pts2 = new cv.Mat()
   const mask = new cv.Mat()
 
   // Create Mat from float data: N rows x 1 col x 2 channels (CV_32FC2)
-  Object.assign(pts1, { rows: matches.length, cols: 1, data32F: pts1Data })
-  Object.assign(pts2, { rows: matches.length, cols: 1, data32F: pts2Data })
+  const pts1Mat = cv.matFromArray(matches.length, 1, cv.CV_32FC2, Array.from(pts1Data))
+  const pts2Mat = cv.matFromArray(matches.length, 1, cv.CV_32FC2, Array.from(pts2Data))
 
   let F: CvMat | null = null
   try {
-    F = cv.findFundamentalMat(pts1, pts2, cv.FM_RANSAC, 3.0, 0.99, mask)
+    F = cv.findFundamentalMat(pts1Mat, pts2Mat, cv.FM_RANSAC, 3.0, 0.99, mask)
 
     // Extract inliers from mask
     const inliers: FeatureMatch[] = []
@@ -192,8 +190,8 @@ export function filterWithRANSAC(
 
     return inliers.length >= MIN_MATCH_COUNT ? inliers : matches
   } finally {
-    pts1.delete()
-    pts2.delete()
+    pts1Mat.delete()
+    pts2Mat.delete()
     mask.delete()
     if (F) F.delete()
   }

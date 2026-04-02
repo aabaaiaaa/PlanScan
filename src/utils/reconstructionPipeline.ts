@@ -176,10 +176,12 @@ export async function runReconstruction(
   }
 
   // Prepare image data for the pipeline
-  const images = photos.map((p) => ({
-    imageData: photoToImageData(p),
-    photoIndex: p.index,
-  }))
+  const images = await Promise.all(
+    photos.map(async (p) => ({
+      imageData: await photoToImageData(p),
+      photoIndex: p.index,
+    })),
+  )
 
   const imageWidth = photos[0].width
   const imageHeight = photos[0].height
@@ -294,15 +296,17 @@ export async function runReconstruction(
 
 /**
  * Convert a CapturedPhoto's data URL to an ImageData object.
- * Creates a temporary canvas to decode the image.
+ * Uses createImageBitmap for proper async decoding of the image data.
  */
-function photoToImageData(photo: CapturedPhoto): ImageData {
+async function photoToImageData(photo: CapturedPhoto): Promise<ImageData> {
+  const response = await fetch(photo.imageData)
+  const blob = await response.blob()
+  const bitmap = await createImageBitmap(blob)
   const canvas = document.createElement('canvas')
   canvas.width = photo.width
   canvas.height = photo.height
   const ctx = canvas.getContext('2d')!
-  const img = new Image()
-  img.src = photo.imageData
-  ctx.drawImage(img, 0, 0, photo.width, photo.height)
+  ctx.drawImage(bitmap, 0, 0, photo.width, photo.height)
+  bitmap.close()
   return ctx.getImageData(0, 0, photo.width, photo.height)
 }

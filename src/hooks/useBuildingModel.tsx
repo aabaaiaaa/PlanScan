@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useMemo,
   useReducer,
   type ReactNode,
 } from 'react'
@@ -111,6 +112,9 @@ function buildingModelReducer(
       rooms.push(merged)
       return recalculateMeasurements({ ...state, rooms })
     }
+
+    default:
+      return state
   }
 }
 
@@ -127,9 +131,10 @@ const BuildingModelContext = createContext<BuildingModelContextValue | null>(
 
 export function BuildingModelProvider({ children }: { children: ReactNode }) {
   const [model, dispatch] = useReducer(buildingModelReducer, null)
+  const value = useMemo(() => ({ model, dispatch }), [model, dispatch])
 
   return (
-    <BuildingModelContext.Provider value={{ model, dispatch }}>
+    <BuildingModelContext.Provider value={value}>
       {children}
     </BuildingModelContext.Provider>
   )
