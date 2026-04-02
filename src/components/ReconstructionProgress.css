@@ -1,0 +1,139 @@
+.reconstruction-progress {
+  max-width: 480px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  border-radius: 8px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Running state */
+.reconstruction-progress__running {
+  text-align: center;
+}
+
+.reconstruction-progress__spinner {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto 0.75rem;
+  border: 3px solid #dee2e6;
+  border-top-color: #4a90d9;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.reconstruction-progress__stage {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: #333;
+  font-weight: 500;
+}
+
+.reconstruction-progress__bar-track {
+  height: 8px;
+  background: #dee2e6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.reconstruction-progress__bar-fill {
+  height: 100%;
+  background: #4a90d9;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.reconstruction-progress__percent {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* Complete state */
+.reconstruction-progress__complete {
+  text-align: center;
+}
+
+.reconstruction-progress__success-message {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.reconstruction-progress__dismiss-btn {
+  padding: 0.5rem 1.25rem;
+  background: #4a90d9;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.reconstruction-progress__dismiss-btn:hover {
+  background: #3a7bc8;
+}
+
+/* Error state */
+.reconstruction-progress__errors {
+  text-align: center;
+}
+
+.reconstruction-progress__error {
+  margin-bottom: 0.5rem;
+}
+
+.reconstruction-progress__error-message {
+  margin: 0;
+  color: #c62828;
+  font-size: 0.95rem;
+}
+
+.reconstruction-progress__retry-btn {
+  margin-top: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  background: #ef5350;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.reconstruction-progress__retry-btn:hover {
+  background: #d32f2f;
+}
+
+/* Warnings */
+.reconstruction-progress__warnings {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.reconstruction-progress__warning {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  color: #e65100;
+}
+
+/* Uncalibrated badge */
+.uncalibrated-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #e65100;
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  border-radius: 3px;
+  text-transform: uppercase;
+  vertical-align: middle;
+}

@@ -107,7 +107,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: User can split a room and see two separate rooms with individual measurements. User can merge two rooms back. Both 3D and 2D views reflect the changes.
 
 ### TASK-018: Reconstruction progress and error handling
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-008, TASK-009
 - **Description**: Add a progress indicator during the reconstruction pipeline (feature detection, matching, pose estimation, triangulation, geometry extraction). Keep the UI responsive during heavy computation (use Web Workers if needed). Detect insufficient photo overlap and prompt the user to capture more photos. Warn if no scale reference has been set. See requirements edge cases.
 - **Verification**: During reconstruction, a progress bar or spinner is shown with stage labels. The UI remains interactive. If given too few photos, an appropriate error/warning message is displayed. If no scale calibration exists, measurements show an "uncalibrated" warning.
