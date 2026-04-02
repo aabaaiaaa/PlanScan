@@ -47,7 +47,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Given matched features from test photos, the function returns camera poses (position + orientation) for each photo. Unit test verifies poses are geometrically consistent (e.g., sequential photos have incrementally changing positions).
 
 ### TASK-008: Point cloud generation via triangulation
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-007
 - **Description**: Triangulate matched feature points using the estimated camera poses to produce a sparse 3D point cloud. Each point should have XYZ coordinates. Apply the scale calibration (from TASK-005) to convert to real-world units. See requirements F4.
 - **Verification**: Given camera poses and matched features, the function returns a 3D point cloud. Unit test verifies points are in plausible 3D positions. If scale calibration is provided, coordinates are in real-world units.
