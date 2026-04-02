@@ -83,7 +83,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Clicking a wall in the 3D view highlights it and shows its length in the detail panel. Clicking a room shows its dimensions. Component test verifies the panel renders with correct data when a selection is made.
 
 ### TASK-014: 2D floor plan viewer
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-011
 - **Description**: Build a FloorPlanViewer React component that renders a top-down 2D view of each floor level. Use either a 2D canvas or Three.js orthographic camera. Draw walls as thick lines, doors as arcs or gaps, windows as parallel line markings. Overlay room dimension labels (width x depth) and wall length labels. See requirements F8.
 - **Verification**: Given a reconstructed model, the component renders a 2D floor plan with walls, doors, windows, and measurement labels. Visual inspection confirms standard architectural conventions are followed.
