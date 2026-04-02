@@ -53,7 +53,7 @@ See [requirements.md](requirements.md) for full context on each feature.
 - **Verification**: Given camera poses and matched features, the function returns a 3D point cloud. Unit test verifies points are in plausible 3D positions. If scale calibration is provided, coordinates are in real-world units.
 
 ### TASK-009: Plane detection and room geometry extraction
-- **Status**: pending
+- **Status**: done
 - **Dependencies**: TASK-008
 - **Description**: Process the 3D point cloud to detect flat surfaces (planes) representing walls, floors, and ceilings. Use RANSAC-based plane fitting or similar classical approach. Classify planes by orientation (horizontal = floor/ceiling, vertical = walls). Group geometry into rooms using doorway-tagged photo positions as boundary markers. Detect floor-level changes to identify multi-level connections (stairs). See requirements F5.
 - **Verification**: Given a point cloud and doorway tags, the function returns a set of rooms, each with walls, floor, and ceiling geometry. Unit test with synthetic point cloud data verifies correct plane detection and room segmentation.
